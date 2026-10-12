@@ -1,19 +1,18 @@
 import requests
 from datetime import datetime
+import os
 import traceback
 
-TOKEN = "8597497470:AAFCgNleoBHBPxmBdi9Avt-652fJ-dOVYI4"
-CHAT_ID = "135222778"
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
 COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"]
 LIVELLI_ALLERTA = ["gialla", "arancione", "rossa"]
 
-LOG_FILE = r"C:\Users\HUAWEI\OneDrive\Desktop\AlertAABZ\log.txt"
-
-def scrivi_log(messaggio):
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {messaggio}\n")
-
 def invia_messaggio(testo):
+    if not TOKEN or not CHAT_ID:
+        print("Token o Chat ID mancanti")
+        return False
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     dati = {
         "chat_id": CHAT_ID,
@@ -24,7 +23,7 @@ def invia_messaggio(testo):
         risposta = requests.post(url, data=dati, timeout=10)
         return risposta.ok
     except Exception as e:
-        scrivi_log(f"Errore invio messaggio: {e}")
+        print("Errore invio:", e)
         return False
 
 def prendi_allerte_reali():
@@ -59,11 +58,11 @@ def prendi_allerte_reali():
                 })
         return allerte_trovate
     except Exception as e:
-        scrivi_log(f"Errore recupero allerte: {e}")
+        print("Errore recupero allerte:", e)
         return []
 
 def controlla_e_notifica():
-    scrivi_log("Script avviato")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Controllo allerte...")
     try:
         allerte = prendi_allerte_reali()
         messaggi = []
@@ -81,15 +80,15 @@ def controlla_e_notifica():
             testo += f"<i>{datetime.now().strftime('%d/%m/%Y %H:%M')}</i>\n\n"
             testo += "\n\n".join(messaggi)
             if invia_messaggio(testo):
-                scrivi_log("Notifica allerta inviata")
+                print("Notifica inviata")
             else:
-                scrivi_log("Errore invio notifica allerta")
-               else:
-            scrivi_log("Nessuna allerta attiva")
+                print("Errore invio notifica")
+        else:
+            print("Nessuna allerta attiva")
 
     except Exception as e:
-        scrivi_log(f"Errore generale: {e}")
-        scrivi_log(traceback.format_exc())
+        print("Errore generale:", e)
+        print(traceback.format_exc())
 
 if __name__ == "__main__":
     controlla_e_notifica()
