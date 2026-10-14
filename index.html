@@ -89,21 +89,41 @@
     .allerta-dettaglio { font-size: 0.85rem; color: #4a5568; }
     .nessuna-allerta { text-align: center; padding: 14px; color: #38a169; font-weight: 500; }
 
-    /* Viabilità */
+    /* Viabilità – elenco a scorrimento */
+    .lista-viabilita-scroll {
+      max-height: 380px;
+      overflow-y: auto;
+      padding-right: 6px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #fafafa;
+    }
+    .lista-viabilita-scroll::-webkit-scrollbar { width: 8px; }
+    .lista-viabilita-scroll::-webkit-scrollbar-thumb {
+      background: #cbd5e0; border-radius: 8px;
+    }
+    .lista-viabilita-scroll::-webkit-scrollbar-track { background: transparent; }
+
     .evento {
       border-left: 4px solid #dd6b20; background: #fffaf0;
-      padding: 10px 12px; margin-bottom: 8px; border-radius: 0 8px 8px 0;
+      padding: 10px 12px; margin: 8px; border-radius: 0 8px 8px 0;
     }
+    .evento:first-child { margin-top: 8px; }
+    .evento:last-child { margin-bottom: 8px; }
     .evento.chiusura { border-left-color: #e53e3e; background: #fff5f5; }
     .evento.baustelle { border-left-color: #d69e2e; background: #fffff0; }
     .evento-titolo { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
     .evento-meta { font-size: 0.8rem; color: #718096; margin-bottom: 4px; }
     .evento-testo { font-size: 0.88rem; color: #4a5568; }
+    .viabilita-info {
+      font-size: 0.85rem; color: #666; margin-top: 10px;
+    }
 
     footer { text-align: center; padding: 18px; font-size: 0.8rem; color: #777; }
     @media (max-width: 600px) {
       .meteo-box { grid-template-columns: 1fr; }
       header h1 { font-size: 1.35rem; }
+      .lista-viabilita-scroll { max-height: 320px; }
     }
   </style>
 </head>
@@ -123,7 +143,10 @@
     <section class="card" id="viabilita">
       <h2>🚗 Viabilità</h2>
       <p class="aggiornamento">Caricamento…</p>
-      <div class="lista-viabilita"><p>Attendere…</p></div>
+      <div class="lista-viabilita-scroll">
+        <div class="lista-viabilita"><p style="padding:12px">Attendere…</p></div>
+      </div>
+      <p class="viabilita-info" id="viabilita-conteggio"></p>
       <a class="link-ext" href="https://traffico.provincia.bz.it" target="_blank">Apri bollettino ufficiale viabilità →</a>
     </section>
 
@@ -178,7 +201,7 @@
         const symOggi = bz.symbol || {};
         const stazioniDomani = (domani.stationData || []);
         const bzDomani = stazioniDomani[0] || {};
-        const symDomani = bzDomani.symbol || oggi.symbol || {};
+        const symDomani = bzDomani.symbol || {};
         const forecasts = dati.dayForecasts || [];
         const mappaUrl = oggi.imageUrl || "";
 
@@ -233,17 +256,18 @@
     async function caricaViabilita() {
       const cont = document.querySelector(".lista-viabilita");
       const agg = document.querySelector("#viabilita .aggiornamento");
+      const conteggio = document.getElementById("viabilita-conteggio");
       try {
         const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
         const dati = await res.json();
         if (!Array.isArray(dati) || !dati.length) {
-          cont.innerHTML = "<p>Nessun evento segnalato.</p>";
+          cont.innerHTML = "<p style='padding:12px'>Nessun evento segnalato.</p>";
           return;
         }
         const ordine = { SPERRE: 0, BAUSTELLE: 1 };
         const sorted = [...dati].sort((a, b) => {
           return (ordine[a.subTycodeValue] ?? 9) - (ordine[b.subTycodeValue] ?? 9);
-        }).slice(0, 25);
+        });
 
         let html = "";
         sorted.forEach(ev => {
@@ -261,14 +285,17 @@
             <div class="evento-testo">${testo}</div>
           </div>`;
         });
-        cont.innerHTML = html + `<p style="font-size:0.85rem;color:#666;margin-top:8px">Mostrati ${sorted.length} di ${dati.length} eventi</p>`;
+        cont.innerHTML = html;
+        const nChiusure = sorted.filter(e => e.subTycodeValue === "SPERRE").length;
+        const nCantieri = sorted.filter(e => e.subTycodeValue === "BAUSTELLE").length;
+        conteggio.textContent = `${sorted.length} eventi · ${nChiusure} chiusure · ${nCantieri} cantieri · scorri l’elenco`;
         const pub = dati[0]?.publishDateTime;
         agg.textContent = pub
           ? "Bollettino aggiornato: " + new Date(pub).toLocaleString("it-IT")
           : "Aggiornato: " + new Date().toLocaleString("it-IT");
       } catch (e) {
         console.error(e);
-        cont.innerHTML = "<p>Errore caricamento viabilità.</p>";
+        cont.innerHTML = "<p style='padding:12px'>Errore caricamento viabilità.</p>";
         agg.textContent = "Errore";
       }
     }
