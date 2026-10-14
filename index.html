@@ -8,119 +8,94 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #f0f2f5;
-      color: #1a1a1a;
-      line-height: 1.5;
-      padding-bottom: 40px;
+      background: #f0f2f5; color: #1a1a1a; line-height: 1.5; padding-bottom: 40px;
     }
     header {
       background: linear-gradient(135deg, #1e3a5f, #2c5282);
-      color: white;
-      padding: 24px 16px;
-      text-align: center;
+      color: white; padding: 24px 16px; text-align: center;
     }
     header h1 { font-size: 1.55rem; margin-bottom: 4px; }
     header p { font-size: 0.95rem; opacity: 0.9; }
     main {
-      max-width: 920px;
-      margin: 20px auto;
-      padding: 0 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 18px;
+      max-width: 960px; margin: 20px auto; padding: 0 16px;
+      display: flex; flex-direction: column; gap: 18px;
     }
     .card {
-      background: white;
-      border-radius: 12px;
-      padding: 18px;
+      background: white; border-radius: 12px; padding: 18px;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    .card h2 {
-      font-size: 1.2rem;
-      margin-bottom: 6px;
-      color: #1e3a5f;
-    }
+    .card h2 { font-size: 1.2rem; margin-bottom: 6px; color: #1e3a5f; }
     .aggiornamento { font-size: 0.85rem; color: #666; margin-bottom: 14px; }
 
-    /* Meteo */
-    .meteo-box {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
+    .meteo-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .meteo-giorno {
-      background: #f7fafc;
-      border-radius: 10px;
-      padding: 14px;
-      border: 1px solid #e2e8f0;
+      background: #f7fafc; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0;
     }
-    .meteo-giorno h3 {
-      font-size: 0.95rem;
-      color: #2c5282;
-      margin-bottom: 6px;
-    }
-    .meteo-temp {
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin: 6px 0;
-    }
+    .meteo-giorno h3 { font-size: 0.95rem; color: #2c5282; margin-bottom: 6px; }
+    .meteo-temp { font-size: 1.25rem; font-weight: 700; margin: 6px 0; }
     .meteo-testo { font-size: 0.9rem; color: #4a5568; }
-
-    /* Pronto Soccorso */
-    .ospedale {
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 10px;
+    .settimana {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px; margin-top: 12px;
     }
-    .ospedale:last-child { margin-bottom: 0; }
+    .giorno-mini {
+      background: #edf2f7; border-radius: 8px; padding: 10px; text-align: center; font-size: 0.82rem;
+    }
+    .giorno-mini strong { display: block; margin-bottom: 4px; color: #2c5282; }
+    .radar-wrap {
+      margin-top: 12px; border-radius: 10px; overflow: hidden;
+      border: 1px solid #e2e8f0; background: #f7fafc;
+    }
+    .radar-wrap iframe { width: 100%; height: 280px; border: 0; }
+    .radar-link { display: inline-block; margin-top: 8px; font-size: 0.9rem; color: #2b6cb0; }
+
+    .ospedale {
+      border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 10px;
+    }
     .ospedale-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
     }
     .ospedale-nome { font-weight: 600; }
-    .totale { font-weight: 700; color: #2d3748; }
+    .totale { font-weight: 700; }
     .codici { display: flex; flex-wrap: wrap; gap: 6px; }
     .codice {
-      display: flex; align-items: center; gap: 5px;
-      padding: 3px 9px; border-radius: 999px;
-      font-size: 0.82rem; font-weight: 600; color: white;
+      display: flex; align-items: center; gap: 5px; padding: 3px 9px;
+      border-radius: 999px; font-size: 0.82rem; font-weight: 600; color: white;
     }
-    .codice span {
-      background: rgba(255,255,255,0.25);
-      padding: 0 6px; border-radius: 999px;
-    }
+    .codice span { background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 999px; }
     .c-rosso { background: #e53e3e; }
     .c-arancione { background: #dd6b20; }
     .c-giallo { background: #d69e2e; }
     .c-verde { background: #38a169; }
     .c-blu { background: #3182ce; }
 
-    /* Allerte */
-    .riga-allerta {
-      padding: 12px 0;
-      border-bottom: 1px solid #edf2f7;
-    }
+    .riga-allerta { padding: 12px 0; border-bottom: 1px solid #edf2f7; }
     .riga-allerta:last-child { border-bottom: none; }
-    .allerta-header {
-      display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
-    }
+    .allerta-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .badge {
       color: white; font-size: 0.72rem; font-weight: 600;
       padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
     }
     .allerta-dettaglio { font-size: 0.85rem; color: #4a5568; }
-    .nessuna-allerta {
-      text-align: center; padding: 14px; color: #38a169; font-weight: 500;
-    }
+    .nessuna-allerta { text-align: center; padding: 14px; color: #38a169; font-weight: 500; }
 
-    footer {
-      text-align: center; padding: 18px; font-size: 0.8rem; color: #777;
+    .evento {
+      border-left: 4px solid #dd6b20; background: #fffaf0;
+      padding: 10px 12px; margin-bottom: 8px; border-radius: 0 8px 8px 0;
     }
+    .evento.chiusura { border-left-color: #e53e3e; background: #fff5f5; }
+    .evento.baustelle { border-left-color: #d69e2e; background: #fffff0; }
+    .evento-titolo { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
+    .evento-meta { font-size: 0.8rem; color: #718096; margin-bottom: 4px; }
+    .evento-testo { font-size: 0.88rem; color: #4a5568; }
+    .mappa-box {
+      margin-top: 12px; border-radius: 10px; overflow: hidden;
+      border: 1px solid #e2e8f0; height: 320px;
+    }
+    .mappa-box iframe { width: 100%; height: 100%; border: 0; }
+
+    footer { text-align: center; padding: 18px; font-size: 0.8rem; color: #777; }
     @media (max-width: 600px) {
       .meteo-box { grid-template-columns: 1fr; }
       header h1 { font-size: 1.35rem; }
@@ -130,7 +105,7 @@
 <body>
   <header>
     <h1>Monitor Alto Adige</h1>
-    <p>Pronto Soccorso · Allerte · Meteo</p>
+    <p>Pronto Soccorso · Allerte · Meteo · Viabilità</p>
   </header>
 
   <main>
@@ -138,6 +113,16 @@
       <h2>🌤 Meteo Alto Adige</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-meteo"><p>Attendere…</p></div>
+    </section>
+
+    <section class="card" id="viabilita">
+      <h2>🚗 Viabilità</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-viabilita"><p>Attendere…</p></div>
+      <div class="mappa-box">
+        <iframe src="https://traffico.provincia.bz.it/it/home" title="Mappa viabilità ufficiale" loading="lazy"></iframe>
+      </div>
+      <a class="radar-link" href="https://traffico.provincia.bz.it" target="_blank">Apri sito ufficiale viabilità →</a>
     </section>
 
     <section class="card" id="pronto-soccorso">
@@ -154,7 +139,7 @@
   </main>
 
   <footer>
-    <p>Dati pubblici · SABES · SIAG Meteo · Protezione Civile</p>
+    <p>Dati pubblici · SABES · SIAG · Centrale Viabilità · Protezione Civile</p>
   </footer>
 
   <script>
@@ -171,6 +156,13 @@
       return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
     }
 
+    function formatDataIT(iso) {
+      if (!iso) return "—";
+      try {
+        return new Date(iso).toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" });
+      } catch { return iso; }
+    }
+
     async function caricaMeteo() {
       const cont = document.querySelector(".lista-meteo");
       const agg = document.querySelector("#meteo .aggiornamento");
@@ -182,6 +174,18 @@
         const stazioni = oggi.stationData || [];
         const bz = stazioni[0] || {};
         const simbolo = (bz.symbol || {}).description || "—";
+        const forecasts = dati.dayForecasts || [];
+
+        let settimana = forecasts.map(g => {
+          const desc = (g.symbol || {}).description || "—";
+          const tmax = g.tempMax ? `${g.tempMax.min}–${g.tempMax.max}°` : "—";
+          const tmin = g.tempMin ? `${g.tempMin.min}–${g.tempMin.max}°` : "—";
+          return `<div class="giorno-mini">
+            <strong>${formatDataIT(g.date)}</strong>
+            ${desc}<br>
+            <span style="color:#2d3748">Max ${tmax}<br>Min ${tmin}</span>
+          </div>`;
+        }).join("");
 
         cont.innerHTML = `
           <div class="meteo-box">
@@ -197,12 +201,67 @@
               <div class="meteo-testo">${domani.weather || ""}</div>
             </div>
           </div>
-          <p style="margin-top:10px;font-size:0.85rem;color:#666">
-            Fonte: <a href="https://meteo.provincia.bz.it" target="_blank" style="color:#2b6cb0">meteo.provincia.bz.it</a>
+          <h3 style="margin-top:16px;font-size:1rem;color:#2c5282">Prognosi prossimi giorni</h3>
+          <div class="settimana">${settimana || "<p>Non disponibile</p>"}</div>
+          <h3 style="margin-top:16px;font-size:1rem;color:#2c5282">Radar precipitazioni</h3>
+          <div class="radar-wrap">
+            <iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar meteo"></iframe>
+          </div>
+          <a class="radar-link" href="https://meteo.provincia.bz.it" target="_blank">Radar e mappe ufficiali Provincia →</a>
+          <p style="margin-top:8px;font-size:0.85rem;color:#666">
+            Fonte bollettino: <a href="https://meteo.provincia.bz.it" target="_blank" style="color:#2b6cb0">meteo.provincia.bz.it</a>
           </p>`;
         agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
       } catch (e) {
         cont.innerHTML = "<p>Errore caricamento meteo.</p>";
+        agg.textContent = "Errore";
+      }
+    }
+
+    async function caricaViabilita() {
+      const cont = document.querySelector(".lista-viabilita");
+      const agg = document.querySelector("#viabilita .aggiornamento");
+      try {
+        const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
+        const dati = await res.json();
+        if (!Array.isArray(dati) || !dati.length) {
+          cont.innerHTML = "<p>Nessun evento segnalato.</p>";
+          return;
+        }
+
+        // Priorità: chiusure, poi cantieri, poi resto – max 25
+        const ordine = { SPERRE: 0, BAUSTELLE: 1 };
+        const sorted = [...dati].sort((a, b) => {
+          const oa = ordine[a.subTycodeValue] ?? 9;
+          const ob = ordine[b.subTycodeValue] ?? 9;
+          return oa - ob;
+        }).slice(0, 25);
+
+        let html = "";
+        sorted.forEach(ev => {
+          const tipo = ev.subTycodeValue || "";
+          const cls = tipo === "SPERRE" ? "chiusura" : (tipo === "BAUSTELLE" ? "baustelle" : "");
+          const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
+          const zona = ev.messageZoneDescIt || "";
+          const grad = ev.messageGradDescIt || "";
+          const testo = ev.placeIt || ev.descriptionIt || "";
+          const dal = ev.beginDate || "";
+          const al = ev.endDate || "";
+          html += `<div class="evento ${cls}">
+            <div class="evento-titolo">${strada || "Evento viabilità"}</div>
+            <div class="evento-meta">${grad}${zona ? " · " + zona : ""} · ${dal}${al ? " → " + al : ""}</div>
+            <div class="evento-testo">${testo}</div>
+          </div>`;
+        });
+
+        cont.innerHTML = html + `<p style="font-size:0.85rem;color:#666;margin-top:8px">Mostrati ${sorted.length} di ${dati.length} eventi · Fonte: Centrale Viabilità</p>`;
+        const pub = dati[0]?.publishDateTime;
+        agg.textContent = pub
+          ? "Bollettino aggiornato: " + new Date(pub).toLocaleString("it-IT")
+          : "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) {
+        console.error(e);
+        cont.innerHTML = "<p>Errore caricamento viabilità. <a href='https://traffico.provincia.bz.it' target='_blank'>Apri sito ufficiale</a></p>";
         agg.textContent = "Errore";
       }
     }
@@ -290,6 +349,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       caricaMeteo();
+      caricaViabilita();
       caricaProntoSoccorso();
       caricaAllerte();
     });
