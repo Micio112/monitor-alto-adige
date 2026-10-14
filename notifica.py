@@ -6,9 +6,9 @@ import traceback
 import sys
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")  # admin di riserva
-SUBS_URL = os.environ.get("SUBS_URL")         # es. https://monitor-bot.xxx.workers.dev/subscribers
-SUBS_KEY = os.environ.get("SUBS_KEY")         # stessa API_KEY del Worker
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+SUBS_URL = os.environ.get("SUBS_URL")
+SUBS_KEY = os.environ.get("SUBS_KEY")
 
 TZ = ZoneInfo("Europe/Rome")
 
@@ -31,11 +31,9 @@ def ora_roma():
     return datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
 
 def prendi_destinatari():
-    """Restituisce la lista di Chat ID a cui inviare (admin + iscritti approvati)."""
     ids = []
     if CHAT_ID:
         ids.append(str(CHAT_ID))
-
     if SUBS_URL and SUBS_KEY:
         try:
             r = requests.get(SUBS_URL, params={"key": SUBS_KEY}, timeout=15)
@@ -43,17 +41,13 @@ def prendi_destinatari():
                 dati = r.json()
                 if isinstance(dati, list):
                     for u in dati:
-                        if isinstance(u, dict):
-                            cid = str(u.get("id", "")).strip()
-                        else:
-                            cid = str(u).strip()
+                        cid = str(u.get("id") if isinstance(u, dict) else u).strip()
                         if cid and cid not in ids:
                             ids.append(cid)
             else:
-                print("Errore HTTP iscritti:", r.status_code, r.text[:200])
+                print("Errore HTTP iscritti:", r.status_code)
         except Exception as e:
             print("Errore recupero iscritti:", e)
-
     print(f"Destinatari: {len(ids)} -> {ids}")
     return ids
 
@@ -61,22 +55,16 @@ def invia_messaggio(testo):
     if not TOKEN:
         print("Token mancante")
         return False
-
     destinatari = prendi_destinatari()
     if not destinatari:
         print("Nessun destinatario")
         return False
-
     ok_globale = True
     for cid in destinatari:
         try:
             r = requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={
-                    "chat_id": cid,
-                    "text": testo,
-                    "parse_mode": "HTML",
-                },
+                data={"chat_id": cid, "text": testo, "parse_mode": "HTML"},
                 timeout=15,
             )
             if r.ok:
@@ -93,17 +81,13 @@ def invia_messaggio(testo):
 def prendi_pronto_soccorso():
     try:
         dati = requests.get(
-            "https://dati.retecivica.bz.it/services/PS_Queue/json",
-            timeout=15,
+            "https://dati.retecivica.bz.it/services/PS_Queue/json", timeout=15
         ).json()
         ospedali = {}
         for r in dati:
             nome = r["HOSPITAL_DESCRIPTION"]
             if nome not in ospedali:
-                ospedali[nome] = {
-                    "totale": 0,
-                    "codici": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0},
-                }
+                ospedali[nome] = {"totale": 0, "codici": {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}}
             q = int(r.get("QUEUE_LENGTH") or 0)
             cod = str(r.get("TRIAGE_CODE") or "")
             ospedali[nome]["totale"] += q
@@ -143,7 +127,7 @@ def controlla_ps():
             messaggi.append(testo)
     return messaggi
 
-# ========== ALLERTE PC NAZIONALI ==========
+# ========== ALLERTE PC ==========
 def prendi_allerte_nazionali():
     try:
         url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
@@ -172,7 +156,7 @@ def prendi_allerte_nazionali():
         print("Errore allerte nazionali:", e)
         return []
 
-# ========== BOLLETTINO METEO UFFICIALE ==========
+# ========== METEO ==========
 def prendi_bollettino_meteo():
     try:
         url = "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it"
@@ -200,14 +184,106 @@ def prendi_bollettino_meteo():
                 f"{domani.get('weather', '')}\n"
                 f"{domani.get('temperatures', '')}\n"
             )
-        testo += (
-            "\n🔗 Fonte: Servizio Meteo Provincia di Bolzano\n"
-            "https://meteo.provincia.bz.it"
-        )
+        forecasts = dati.get("dayForecasts") or []
+        if forecasts:
+            testo += "\n<b>Prossimi giorni</b>\n"
+            for g in forecasts:
+                desc = (g.get("symbol") or {}).get("description", "—")
+                data = (g.get("date") or "")[:10]
+                tmax = g.get("tempMax") or {}
+                tmin = g.get("tempMin") or {}
+                testo += (
+                    f"• {data}: {desc} "
+                    f"(max {tmax.get('min', '?')}–{tmax.get('max', '?')}° / "
+                    f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)\n"
+                )
+        testo += "\n🔗 https://meteo.provincia.bz.it"
         return testo
     except Exception as e:
         print("Errore bollettino meteo:", e)
         return None
+
+# ========== VIABILITÀ ==========
+def prendi_viabilita():
+    try:
+        dati = requests.get(
+            "https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json",
+            timeout=20,
+        ).json()
+        return dati if isinstance(dati, list) else []
+    except Exception as e:
+        print("Errore viabilità:", e)
+        return []
+
+def formatta_evento_viabilita(ev):
+    strada = " ".join(
+        filter(
+            None,
+            [
+                ev.get("messageStreetNr"),
+                ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt"),
+            ],
+        )
+    )
+    zona = ev.get("messageZoneDescIt") or ""
+    grad = ev.get("messageGradDescIt") or ""
+    testo = (ev.get("placeIt") or ev.get("descriptionIt") or "").strip()
+    dal = ev.get("beginDate") or ""
+    al = ev.get("endDate") or ""
+    tipo = ev.get("subTycodeValue") or ""
+    emoji = "🚧" if tipo == "BAUSTELLE" else ("🚫" if tipo == "SPERRE" else "⚠️")
+    righe = [
+        f"{emoji} <b>{strada or 'Evento viabilità'}</b>",
+        f"{grad}" + (f" · {zona}" if zona else ""),
+        f"Dal {dal}" + (f" al {al}" if al else ""),
+        testo[:400] + ("…" if len(testo) > 400 else ""),
+    ]
+    return "\n".join(r for r in righe if r)
+
+def report_viabilita_mattutino():
+    eventi = prendi_viabilita()
+    if not eventi:
+        return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_roma()}</i>\n\nNessun dato disponibile."
+
+    chiusure = [e for e in eventi if e.get("subTycodeValue") == "SPERRE"]
+    cantieri = [e for e in eventi if e.get("subTycodeValue") == "BAUSTELLE"]
+    altri = [e for e in eventi if e.get("subTycodeValue") not in ("SPERRE", "BAUSTELLE")]
+
+    testo = (
+        f"🚗 <b>Report viabilità mattutino</b>\n"
+        f"<i>{ora_roma()}</i>\n\n"
+        f"🚫 Chiusure: <b>{len(chiusure)}</b>\n"
+        f"🚧 Cantieri: <b>{len(cantieri)}</b>\n"
+        f"⚠️ Altri eventi: <b>{len(altri)}</b>\n"
+        f"Totale segnalazioni: <b>{len(eventi)}</b>\n"
+    )
+    if chiusure:
+        testo += "\n<b>Principali chiusure</b>\n"
+        for ev in chiusure[:8]:
+            testo += "\n" + formatta_evento_viabilita(ev) + "\n"
+    testo += "\n🔗 https://traffico.provincia.bz.it"
+    return testo
+
+def nuove_chiusure():
+    eventi = prendi_viabilita()
+    ora = datetime.now(TZ)
+    nuove = []
+    for ev in eventi:
+        if ev.get("subTycodeValue") != "SPERRE":
+            continue
+        pub = ev.get("publishDateTime")
+        if not pub:
+            continue
+        try:
+            dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=TZ)
+            delta = (ora - dt.astimezone(TZ)).total_seconds()
+            if 0 <= delta <= 2 * 3600:
+                nuove.append(ev)
+        except Exception:
+            continue
+    return nuove
 
 # ========== MAIN ==========
 def controlla_emergenze():
@@ -215,6 +291,10 @@ def controlla_emergenze():
     messaggi = []
     messaggi.extend(controlla_ps())
     messaggi.extend(prendi_allerte_nazionali())
+    for ev in nuove_chiusure():
+        messaggi.append(
+            "🚫 <b>Nuova chiusura / interruzione</b>\n" + formatta_evento_viabilita(ev)
+        )
 
     if messaggi:
         testo = f"🔔 <b>Monitor Alto Adige</b>\n<i>{ora_roma()}</i>\n\n"
@@ -239,6 +319,13 @@ if __name__ == "__main__":
         modo = (sys.argv[1] if len(sys.argv) > 1 else "check").lower()
         if modo == "meteo":
             invia_meteo_giornaliero()
+        elif modo == "viabilita":
+            print(f"[{ora_roma()}] Report viabilità mattutino...")
+            testo = report_viabilita_mattutino()
+            if invia_messaggio(testo):
+                print("Report viabilità inviato")
+            else:
+                print("Errore invio report viabilità")
         else:
             controlla_emergenze()
     except Exception as e:
