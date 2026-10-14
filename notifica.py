@@ -19,6 +19,26 @@ SOGLIA_TOTALE = 50
 SOGLIA_ROSSI = 5
 SOGLIA_ARANCIONI = 10
 
+# Ordine tipico stationData nel bollettino SIAG
+STAZIONI_NOMI = [
+    "Bolzano",
+    "Merano",
+    "Bressanone",
+    "Brunico",
+    "Silandro",
+    "Dobbiaco",
+]
+
+GIORNI_SETTIMANA = {
+    0: "Lunedì",
+    1: "Martedì",
+    2: "Mercoledì",
+    3: "Giovedì",
+    4: "Venerdì",
+    5: "Sabato",
+    6: "Domenica",
+}
+
 CERCHI = {
     "1": "🔴",
     "2": "🟠",
@@ -29,6 +49,16 @@ CERCHI = {
 
 def ora_roma():
     return datetime.now(TZ).strftime("%d/%m/%Y %H:%M")
+
+def nome_giorno(iso_date):
+    """Converte data ISO in nome giorno (es. Giovedì)."""
+    if not iso_date:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(str(iso_date).replace("Z", "+00:00")[:19])
+        return GIORNI_SETTIMANA.get(dt.weekday(), str(iso_date)[:10])
+    except Exception:
+        return str(iso_date)[:10]
 
 def prendi_destinatari():
     ids = []
@@ -157,17 +187,28 @@ def prendi_allerte_nazionali():
         return []
 
 # ========== METEO ==========
+def formatta_stazioni(station_data):
+    """Elenco temperature/simboli per i comuni principali."""
+    if not station_data:
+        return ""
+    righe = []
+    for i, st in enumerate(station_data):
+        nome = STAZIONI_NOMI[i] if i < len(STAZIONI_NOMI) else f"Stazione {i+1}"
+        sym = (st.get("symbol") or {}).get("description", "—")
+        tmin = st.get("min")
+        tmax = st.get("max")
+        if tmin is not None and tmax is not None:
+            righe.append(f"• <b>{nome}</b>: {sym} · {tmin}° / {tmax}°")
+        else:
+            righe.append(f"• <b>{nome}</b>: {sym}")
+    return "\n".join(righe)
+
 def prendi_bollettino_meteo():
     try:
         url = "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it"
         dati = requests.get(url, timeout=15).json()
         oggi = dati.get("today", {})
         domani = dati.get("tomorrow", {})
-        stazioni = oggi.get("stationData") or []
-        bolzano = stazioni[0] if stazioni else {}
-        simbolo = (bolzano.get("symbol") or {}).get("description", "—")
-        tmin = bolzano.get("min")
-        tmax = bolzano.get("max")
 
         testo = (
             f"🌤 <b>Bollettino Meteo Alto Adige</b>\n"
@@ -176,27 +217,36 @@ def prendi_bollettino_meteo():
             f"{oggi.get('weather', '')}\n"
             f"{oggi.get('temperatures', '')}\n"
         )
-        if tmin is not None and tmax is not None:
-            testo += f"\n📍 <b>Bolzano</b>: {simbolo}\nMin {tmin}° / Max {tmax}°\n"
+        st_oggi = oggi.get("stationData") or []
+        if st_oggi:
+            testo += "\n📍 <b>Comuni principali (oggi)</b>\n"
+            testo += formatta_stazioni(st_oggi) + "\n"
+
         if domani:
             testo += (
                 f"\n<b>Domani – {domani.get('title', '—')}</b>\n"
                 f"{domani.get('weather', '')}\n"
                 f"{domani.get('temperatures', '')}\n"
             )
+            st_domani = domani.get("stationData") or []
+            if st_domani:
+                testo += "\n📍 <b>Comuni principali (domani)</b>\n"
+                testo += formatta_stazioni(st_domani) + "\n"
+
         forecasts = dati.get("dayForecasts") or []
         if forecasts:
             testo += "\n<b>Prossimi giorni</b>\n"
             for g in forecasts:
+                giorno = nome_giorno(g.get("date"))
                 desc = (g.get("symbol") or {}).get("description", "—")
-                data = (g.get("date") or "")[:10]
                 tmax = g.get("tempMax") or {}
                 tmin = g.get("tempMin") or {}
                 testo += (
-                    f"• {data}: {desc} "
+                    f"• <b>{giorno}</b>: {desc} "
                     f"(max {tmax.get('min', '?')}–{tmax.get('max', '?')}° / "
                     f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)\n"
                 )
+
         testo += "\n🔗 https://meteo.provincia.bz.it"
         return testo
     except Exception as e:
