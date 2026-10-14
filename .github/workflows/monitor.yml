@@ -2,8 +2,8 @@ name: Monitor Alto Adige
 
 on:
   schedule:
-    # Controllo emergenze ogni 10 minuti
-    - cron: '*/10 * * * *'
+    # Controllo emergenze ogni 30 minuti
+    - cron: '*/30 * * * *'
     # Bollettino meteo mattina (07:30 ora Italia ≈ 05:30 UTC in estate, 06:30 in inverno)
     # Usiamo 05:30 e 09:00 UTC per coprire meglio
     - cron: '30 5 * * *'
