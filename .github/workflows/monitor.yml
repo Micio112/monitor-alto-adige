@@ -46,4 +46,6 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          SUBS_URL: ${{ secrets.SUBS_URL }}
+          SUBS_KEY: ${{ secrets.SUBS_KEY }}
         run: python notifica.py ${{ steps.mode.outputs.modo }}
