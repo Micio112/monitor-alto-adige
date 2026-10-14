@@ -1,27 +1,49 @@
-name: Monitor Allerte Alto Adige
+name: Monitor Alto Adige
 
 on:
   schedule:
-    - cron: '*/10 * * * *'   # ogni 10 minuti
-  workflow_dispatch:         # permette di avviarlo anche a mano
+    # Controllo emergenze ogni 10 minuti
+    - cron: '*/10 * * * *'
+    # Bollettino meteo mattina (07:30 ora Italia ≈ 05:30 UTC in estate, 06:30 in inverno)
+    # Usiamo 05:30 e 09:00 UTC per coprire meglio
+    - cron: '30 5 * * *'
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: 'check oppure meteo'
+        required: false
+        default: 'check'
 
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install requests
         run: pip install requests
 
-      - name: Esegui controllo allerte
+      - name: Determina modalità
+        id: mode
+        run: |
+          # Se avviato dallo schedule delle 05:30 o 09:00 UTC → meteo
+          # Altrimenti → check emergenze
+          HOUR="${{ github.event.schedule }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "modo=${{ github.event.inputs.modo || 'check' }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "30 5 * * *" ] || [ "${{ github.event.schedule }}" = "0 9 * * *" ]; then
+            echo "modo=meteo" >> $GITHUB_OUTPUT
+          else
+            echo "modo=check" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Esegui
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python notifica.py
+        run: python notifica.py ${{ steps.mode.outputs.modo }}
