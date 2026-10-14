@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor Alto Adige</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f0f2f5;
+      color: #1a1a1a;
+      line-height: 1.5;
+      padding-bottom: 40px;
+    }
+    header {
+      background: linear-gradient(135deg, #1e3a5f, #2c5282);
+      color: white;
+      padding: 24px 16px;
+      text-align: center;
+    }
+    header h1 { font-size: 1.55rem; margin-bottom: 4px; }
+    header p { font-size: 0.95rem; opacity: 0.9; }
+    main {
+      max-width: 920px;
+      margin: 20px auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 18px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+      color: #1e3a5f;
+    }
+    .aggiornamento { font-size: 0.85rem; color: #666; margin-bottom: 14px; }
+
+    /* Meteo */
+    .meteo-box {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .meteo-giorno {
+      background: #f7fafc;
+      border-radius: 10px;
+      padding: 14px;
+      border: 1px solid #e2e8f0;
+    }
+    .meteo-giorno h3 {
+      font-size: 0.95rem;
+      color: #2c5282;
+      margin-bottom: 6px;
+    }
+    .meteo-temp {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 6px 0;
+    }
+    .meteo-testo { font-size: 0.9rem; color: #4a5568; }
+
+    /* Pronto Soccorso */
+    .ospedale {
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+    .ospedale:last-child { margin-bottom: 0; }
+    .ospedale-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .ospedale-nome { font-weight: 600; }
+    .totale { font-weight: 700; color: #2d3748; }
+    .codici { display: flex; flex-wrap: wrap; gap: 6px; }
+    .codice {
+      display: flex; align-items: center; gap: 5px;
+      padding: 3px 9px; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 600; color: white;
+    }
+    .codice span {
+      background: rgba(255,255,255,0.25);
+      padding: 0 6px; border-radius: 999px;
+    }
+    .c-rosso { background: #e53e3e; }
+    .c-arancione { background: #dd6b20; }
+    .c-giallo { background: #d69e2e; }
+    .c-verde { background: #38a169; }
+    .c-blu { background: #3182ce; }
+
+    /* Allerte */
+    .riga-allerta {
+      padding: 12px 0;
+      border-bottom: 1px solid #edf2f7;
+    }
+    .riga-allerta:last-child { border-bottom: none; }
+    .allerta-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 4px;
+    }
+    .badge {
+      color: white; font-size: 0.72rem; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+    }
+    .allerta-dettaglio { font-size: 0.85rem; color: #4a5568; }
+    .nessuna-allerta {
+      text-align: center; padding: 14px; color: #38a169; font-weight: 500;
+    }
+
+    footer {
+      text-align: center; padding: 18px; font-size: 0.8rem; color: #777;
+    }
+    @media (max-width: 600px) {
+      .meteo-box { grid-template-columns: 1fr; }
+      header h1 { font-size: 1.35rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Monitor Alto Adige</h1>
+    <p>Pronto Soccorso · Allerte · Meteo</p>
+  </header>
+
+  <main>
+    <section class="card" id="meteo">
+      <h2>🌤 Meteo Alto Adige</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-meteo"><p>Attendere…</p></div>
+    </section>
+
+    <section class="card" id="pronto-soccorso">
+      <h2>🏥 Pronto Soccorso</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-ospedali"><p>Attendere…</p></div>
+    </section>
+
+    <section class="card" id="allerte">
+      <h2>🚨 Allerte Protezione Civile</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-allerte"><p>Attendere…</p></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>Dati pubblici · SABES · SIAG Meteo · Protezione Civile</p>
+  </footer>
+
+  <script>
+    const COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"];
+    const TRIAGE = {
+      "1": { nome: "Rosso", classe: "c-rosso" },
+      "2": { nome: "Arancione", classe: "c-arancione" },
+      "3": { nome: "Giallo", classe: "c-giallo" },
+      "4": { nome: "Verde", classe: "c-verde" },
+      "5": { nome: "Blu", classe: "c-blu" }
+    };
+
+    function coloreLivello(c) {
+      return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
+    }
+
+    async function caricaMeteo() {
+      const cont = document.querySelector(".lista-meteo");
+      const agg = document.querySelector("#meteo .aggiornamento");
+      try {
+        const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it");
+        const dati = await res.json();
+        const oggi = dati.today || {};
+        const domani = dati.tomorrow || {};
+        const stazioni = oggi.stationData || [];
+        const bz = stazioni[0] || {};
+        const simbolo = (bz.symbol || {}).description || "—";
+
+        cont.innerHTML = `
+          <div class="meteo-box">
+            <div class="meteo-giorno">
+              <h3>Oggi – ${oggi.title || "—"}</h3>
+              <div class="meteo-temp">${bz.min != null ? bz.min + "° / " + bz.max + "°" : (oggi.temperatures || "")}</div>
+              <div class="meteo-testo"><b>Bolzano:</b> ${simbolo}</div>
+              <div class="meteo-testo" style="margin-top:6px">${oggi.weather || ""}</div>
+            </div>
+            <div class="meteo-giorno">
+              <h3>Domani – ${domani.title || "—"}</h3>
+              <div class="meteo-temp">${domani.temperatures || "—"}</div>
+              <div class="meteo-testo">${domani.weather || ""}</div>
+            </div>
+          </div>
+          <p style="margin-top:10px;font-size:0.85rem;color:#666">
+            Fonte: <a href="https://meteo.provincia.bz.it" target="_blank" style="color:#2b6cb0">meteo.provincia.bz.it</a>
+          </p>`;
+        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) {
+        cont.innerHTML = "<p>Errore caricamento meteo.</p>";
+        agg.textContent = "Errore";
+      }
+    }
+
+    async function caricaProntoSoccorso() {
+      const cont = document.querySelector(".lista-ospedali");
+      const agg = document.querySelector("#pronto-soccorso .aggiornamento");
+      try {
+        const res = await fetch("https://dati.retecivica.bz.it/services/PS_Queue/json");
+        const dati = await res.json();
+        const ospedali = {};
+        let ultimo = null;
+        dati.forEach(r => {
+          const nome = r.HOSPITAL_DESCRIPTION;
+          if (!ospedali[nome]) ospedali[nome] = { totale: 0, codici: {} };
+          const q = Number(r.QUEUE_LENGTH) || 0;
+          ospedali[nome].totale += q;
+          ospedali[nome].codici[r.TRIAGE_CODE] = q;
+          if (r.LAST_UPDATE_TIME) ultimo = r.LAST_UPDATE_TIME;
+        });
+        let html = "";
+        Object.keys(ospedali).sort().forEach(nome => {
+          const o = ospedali[nome];
+          let codiciHtml = "";
+          ["1","2","3","4","5"].forEach(cod => {
+            const t = TRIAGE[cod];
+            const n = o.codici[cod] || 0;
+            codiciHtml += `<div class="codice ${t.classe}">${t.nome} <span>${n}</span></div>`;
+          });
+          html += `<div class="ospedale">
+            <div class="ospedale-header">
+              <span class="ospedale-nome">${nome}</span>
+              <span class="totale">${o.totale} in attesa</span>
+            </div>
+            <div class="codici">${codiciHtml}</div>
+          </div>`;
+        });
+        cont.innerHTML = html || "<p>Nessun dato</p>";
+        agg.textContent = ultimo
+          ? "Ultimo aggiornamento: " + new Date(ultimo).toLocaleString("it-IT")
+          : "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) {
+        cont.innerHTML = "<p>Errore caricamento Pronto Soccorso.</p>";
+        agg.textContent = "Errore";
+      }
+    }
+
+    async function caricaAllerte() {
+      const cont = document.querySelector(".lista-allerte");
+      const agg = document.querySelector("#allerte .aggiornamento");
+      try {
+        const res = await fetch(`https://allertameteo.app/api/alert/${COMUNI.join(",")}`);
+        const dati = await res.json();
+        if (!dati.success) {
+          cont.innerHTML = "<p>Errore caricamento allerte.</p>";
+          return;
+        }
+        let data = dati.data;
+        if (data && data.comune) data = { [data.comune]: data };
+        let html = "";
+        for (const nome in data) {
+          const info = data[nome];
+          if (!info) continue;
+          const oggi = info.oggi?.allerta || {};
+          const colore = (oggi.colore || "verde").toLowerCase();
+          const livello = colore.charAt(0).toUpperCase() + colore.slice(1);
+          html += `<div class="riga-allerta">
+            <div class="allerta-header">
+              <span class="badge" style="background-color:${coloreLivello(colore)}">${livello}</span>
+              <strong>${info.comune || nome}</strong>
+            </div>
+            <div class="allerta-dettaglio">
+              <div>${oggi.descrizione || "—"}</div>
+              <div>Zona: ${info.zona || "—"}</div>
+            </div>
+          </div>`;
+        }
+        cont.innerHTML = html || `<div class="nessuna-allerta">Nessuna allerta attiva</div>`;
+        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) {
+        cont.innerHTML = "<p>Errore di connessione.</p>";
+        agg.textContent = "Errore";
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      caricaMeteo();
+      caricaProntoSoccorso();
+      caricaAllerte();
+    });
+  </script>
+</body>
+</html>
