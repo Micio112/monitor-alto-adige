@@ -25,8 +25,8 @@
       color: white; padding: 20px 12px 16px; text-align: center; overflow: hidden;
     }
     header .mountains {
-      position: absolute; left: 0; right: 0; bottom: 0; height: 70px;
-      opacity: 0.22; pointer-events: none;
+      position: absolute; left: 0; right: 0; bottom: 0; height: 88px;
+      opacity: 0.28; pointer-events: none;
     }
     header .mountains svg { width: 100%; height: 100%; display: block; }
     header .header-top {
@@ -35,8 +35,7 @@
       max-width: 960px; margin: 0 auto 6px; gap: 10px;
     }
     header .logo-title { flex: 1; text-align: center; }
-    header h1 { font-size: 1.45rem; margin-bottom: 2px; }
-    header .subtitle { font-size: 0.88rem; opacity: 0.9; }
+    header h1 { font-size: 1.45rem; margin-bottom: 0; }
     .btn-aed {
       display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       flex-shrink: 0; padding: 8px 10px; border-radius: 10px;
@@ -207,8 +206,15 @@
   <div id="banner-criticita" role="alert"></div>
   <header>
     <div class="mountains" aria-hidden="true">
-      <svg viewBox="0 0 800 80" preserveAspectRatio="none">
-        <path fill="#fff" d="M0,80 L0,55 L40,40 L80,52 L120,28 L160,48 L200,20 L250,45 L300,15 L350,42 L400,10 L460,38 L520,18 L580,48 L640,22 L700,50 L760,30 L800,45 L800,80 Z"/>
+      <svg viewBox="0 0 800 100" preserveAspectRatio="none">
+        <!-- catena di fondo -->
+        <path fill="#fff" opacity="0.45" d="M0,100 L0,62 L30,55 L55,48 L90,58 L120,42 L150,52 L180,38 L220,55 L260,32 L300,48 L340,28 L380,45 L420,22 L460,40 L500,18 L540,35 L580,25 L620,42 L660,28 L700,48 L740,35 L780,50 L800,42 L800,100 Z"/>
+        <!-- catena media -->
+        <path fill="#fff" opacity="0.7" d="M0,100 L0,70 L25,60 L50,68 L85,50 L115,62 L145,45 L175,58 L210,40 L250,55 L290,35 L330,50 L370,30 L410,48 L450,28 L490,45 L530,32 L570,50 L610,36 L650,52 L690,40 L730,55 L770,42 L800,52 L800,100 Z"/>
+        <!-- creste anteriori più dettagliate -->
+        <path fill="#fff" d="M0,100 L0,78 L20,70 L40,76 L70,58 L95,72 L125,55 L155,68 L185,50 L215,65 L245,48 L275,62 L310,42 L345,58 L380,38 L415,55 L450,35 L485,52 L520,40 L555,58 L590,45 L625,60 L660,48 L695,62 L730,52 L765,65 L800,58 L800,100 Z"/>
+        <!-- dettagli picchi -->
+        <path fill="none" stroke="#fff" stroke-width="1.2" opacity="0.5" d="M70,58 L80,48 L90,58 M185,50 L198,38 L210,50 M310,42 L325,30 L340,42 M450,35 L465,22 L480,35 M590,45 L605,33 L620,45 M730,52 L745,40 L760,52"/>
       </svg>
     </div>
     <div class="header-top">
@@ -218,13 +224,12 @@
       </a>
       <div class="logo-title">
         <h1>Monitor Alto Adige</h1>
-        <p class="subtitle">Pronto Soccorso · Allerte · Meteo · Viabilità</p>
       </div>
     </div>
     <nav class="quick" aria-label="Sezioni">
       <a href="#meteo">Meteo</a>
       <a href="#pronto-soccorso">Pronto Soccorso</a>
-      <a href="#farmacie">Farmacie</a>
+      <a href="#farmacie">Farmacie (solo weekend)</a>
       <a href="#viabilita">Viabilità</a>
       <a href="#allerte">Allerte</a>
       <a href="#aed">AED</a>
@@ -283,7 +288,7 @@
   </a>
   <button type="button" id="btn-top" aria-label="Torna su" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
   <script>
-    const TELEGRAM_BOT = "Micioalertbot"; // es. "MonitorAltoAdigeBot"
+    const TELEGRAM_BOT = ""; // es. "MonitorAltoAdigeBot"
     if (TELEGRAM_BOT) {
       document.getElementById("btn-telegram").href = "https://t.me/" + TELEGRAM_BOT;
     }
