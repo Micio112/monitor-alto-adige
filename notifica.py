@@ -35,10 +35,11 @@ CERCHI = {"1": "🔴", "2": "🟠", "3": "🟡", "4": "🟢", "5": "🔵"}
 
 COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"]
 
+# Zone / arterie per report viabilità
 GRUPPI_VIABILITA = [
     ("A22", lambda e: (e.get("messageStreetNr") or "").upper() == "A22"
-     or ("brennero" in ((e.get("placeIt") or "") + (e.get("messageStreetInternetDescIt") or "")).lower()
-         and "a22" in ((e.get("messageStreetNr") or "") + (e.get("placeIt") or "")).lower())),
+     or "brennero" in ((e.get("placeIt") or "") + (e.get("messageStreetInternetDescIt") or "")).lower()
+     and "a22" in ((e.get("messageStreetNr") or "") + (e.get("placeIt") or "")).lower()),
     ("MEBO / SS38 / SS42", lambda e: any(
         x in ((e.get("messageStreetNr") or "") + " " + (e.get("placeIt") or "")).upper()
         for x in ("MEBO", "SS38", "SS42")
@@ -79,10 +80,12 @@ def is_weekend_or_holiday():
     d = ora_roma().date()
     if d.weekday() >= 5:
         return True
+    # Festività fisse IT (semplificato)
     fixed = {(1, 1), (1, 6), (4, 25), (5, 1), (6, 2), (8, 15), (11, 1), (12, 8), (12, 25), (12, 26)}
     return (d.month, d.day) in fixed
 
 
+# ---------- stato anti-spam ----------
 def _state_path(name):
     return STATE_DIR / f"{name}.json"
 
@@ -102,8 +105,10 @@ def save_state(name, data):
 
 
 def already_sent(event_key, ttl_hours=36):
+    """True se già notificato di recente."""
     st = load_state("events", {})
     now = ora_roma().timestamp()
+    # pulizia
     st = {k: v for k, v in st.items() if now - v < ttl_hours * 3600}
     if event_key in st:
         save_state("events", st)
@@ -114,16 +119,19 @@ def already_sent(event_key, ttl_hours=36):
 
 
 def daily_flag(name):
+    """True se già eseguito oggi (con nome flag)."""
     st = load_state("daily", {})
     today = str(ora_roma().date())
     if st.get(name) == today:
         return True
     st[name] = today
+    # tieni solo oggi
     st = {k: v for k, v in st.items() if v == today}
     save_state("daily", st)
     return False
 
 
+# ---------- destinatari / invio ----------
 def prendi_destinatari():
     ids = []
     if CHAT_ID:
@@ -168,6 +176,7 @@ def invia_messaggio(testo):
     return ok
 
 
+# ========== PRONTO SOCCORSO ==========
 def prendi_pronto_soccorso():
     try:
         dati = requests.get("https://dati.retecivica.bz.it/services/PS_Queue/json", timeout=15).json()
@@ -225,6 +234,7 @@ def controlla_ps():
     return messaggi
 
 
+# ========== ALLERTE PC NAZIONALI (1 volta per evento) ==========
 def prendi_allerte_nazionali():
     try:
         url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
@@ -258,7 +268,9 @@ def prendi_allerte_nazionali():
         return []
 
 
+# ========== TEMPORALI (1 volta per comune/evento) ==========
 def controlla_temporali():
+    """Usa descrizione allerta / bollettino SIAG se parla di temporali forti."""
     messaggi = []
     try:
         url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
@@ -297,7 +309,10 @@ def controlla_temporali():
     except Exception as e:
         print("Errore temporali:", e)
     return messaggi
-    def formatta_stazioni(station_data):
+
+
+# ========== METEO ==========
+def formatta_stazioni(station_data):
     if not station_data:
         return ""
     righe = []
@@ -353,6 +368,7 @@ def prendi_bollettino_meteo():
         return None
 
 
+# ========== VIABILITÀ ==========
 def prendi_viabilita():
     try:
         dati = requests.get(
@@ -465,10 +481,12 @@ def nuove_chiusure_e_incidenti():
     return out
 
 
+# ========== FARMACIE ==========
 def prendi_farmacie_turno():
     try:
         dati = requests.get("http://daten.buergernetz.bz.it/services/pharmacy/v1/json", timeout=20).json()
         on = [x for x in dati if x.get("IS_TURN") == 1]
+        # filtra comuni principali
         filtrati = []
         for x in on:
             comune = x.get("GEME_DESC_I") or ""
@@ -519,6 +537,7 @@ def report_farmacie(quando="mattina"):
     return testo
 
 
+# ========== MAIN ==========
 def controlla_emergenze():
     print(f"[{ora_str()}] Controllo emergenze...")
     messaggi = []
@@ -534,14 +553,17 @@ def controlla_emergenze():
     else:
         print("Nessuna condizione di allerta")
 
+    # Report automatici in fascia oraria (più affidabili del solo cron)
     h = ora_roma().hour
     m = ora_roma().minute
 
+    # Viabilità mattina 6:00–8:30
     if 6 <= h < 9 or (h == 5 and m >= 45):
         if not daily_flag("viabilita_mattina"):
             print("Invio report viabilità (fascia mattina)...")
             invia_messaggio(report_viabilita_mattutino())
 
+    # Meteo mattina 7:00–9:30
     if 7 <= h < 10:
         if not daily_flag("meteo_mattina"):
             print("Invio bollettino meteo (fascia mattina)...")
@@ -549,12 +571,14 @@ def controlla_emergenze():
             if t:
                 invia_messaggio(t)
 
+    # Meteo secondo slot ~11
     if 10 <= h < 12:
         if not daily_flag("meteo_tarda_mattina"):
             t = prendi_bollettino_meteo()
             if t:
                 invia_messaggio(t)
 
+    # Farmacie weekend mattina 8–10 e sera 18–20
     if is_weekend_or_holiday():
         if 8 <= h < 10 and not daily_flag("farm_mattina"):
             invia_messaggio(report_farmacie("mattina"))
