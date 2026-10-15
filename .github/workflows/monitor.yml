@@ -2,16 +2,19 @@ name: Monitor Alto Adige
 
 on:
   schedule:
-    # Controllo emergenze ogni 30 minuti
+    # Controlli ogni 30 minuti (emergenze + report in fascia oraria)
     - cron: '*/30 * * * *'
-    # Bollettino meteo mattina (07:30 ora Italia ≈ 05:30 UTC in estate, 06:30 in inverno)
-    # Usiamo 05:30 e 09:00 UTC per coprire meglio
+    # Backup mattina (se il job delle 30 min è in ritardo)
+    - cron: '0 5 * * *'
     - cron: '30 5 * * *'
+    - cron: '0 6 * * *'
     - cron: '0 9 * * *'
+    # Farmacie weekend sera
+    - cron: '0 18 * * 0,6'
   workflow_dispatch:
     inputs:
       modo:
-        description: 'check oppure meteo'
+        description: 'check | meteo | viabilita | farmacie'
         required: false
         default: 'check'
 
@@ -25,19 +28,25 @@ jobs:
         with:
           python-version: '3.11'
 
+      # Qui salva/ripristina la cartella .state (anti-spam e flag giornalieri)
+      - name: Restore state
+        uses: actions/cache@v4
+        with:
+          path: .state
+          key: monitor-state-${{ github.run_id }}
+          restore-keys: |
+            monitor-state-
+
       - name: Install requests
         run: pip install requests
 
       - name: Determina modalità
         id: mode
         run: |
-          # Se avviato dallo schedule delle 05:30 o 09:00 UTC → meteo
-          # Altrimenti → check emergenze
-          HOUR="${{ github.event.schedule }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "modo=${{ github.event.inputs.modo || 'check' }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.schedule }}" = "30 5 * * *" ] || [ "${{ github.event.schedule }}" = "0 9 * * *" ]; then
-            echo "modo=meteo" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event.schedule }}" = "0 18 * * 0,6" ]; then
+            echo "modo=farmacie" >> $GITHUB_OUTPUT
           else
             echo "modo=check" >> $GITHUB_OUTPUT
           fi
