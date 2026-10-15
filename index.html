@@ -2,64 +2,103 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1e3a5f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="Monitor Alto Adige – Pronto Soccorso, allerte, meteo, viabilità, farmacie e AED">
   <title>Monitor Alto Adige</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: #f0f2f5; color: #1a1a1a; line-height: 1.5; padding-bottom: 40px;
+      background: #f0f2f5; color: #1a1a1a; line-height: 1.5; padding-bottom: 80px;
+      overflow-x: hidden;
     }
     header {
-      background: linear-gradient(135deg, #1e3a5f, #2c5282);
-      color: white; padding: 24px 16px; text-align: center;
+      position: relative;
+      background: linear-gradient(160deg, #1a365d 0%, #2b6cb0 55%, #3182ce 100%);
+      color: white; padding: 20px 12px 16px; text-align: center; overflow: hidden;
     }
-    header h1 { font-size: 1.55rem; margin-bottom: 4px; }
-    header p { font-size: 0.95rem; opacity: 0.9; }
+    header .mountains {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 70px;
+      opacity: 0.22; pointer-events: none;
+    }
+    header .mountains svg { width: 100%; height: 100%; display: block; }
+    header .header-top {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: flex-start;
+      max-width: 960px; margin: 0 auto 6px; gap: 10px;
+    }
+    header .logo-title { flex: 1; text-align: center; }
+    header h1 { font-size: 1.45rem; margin-bottom: 2px; }
+    header .subtitle { font-size: 0.88rem; opacity: 0.9; }
+    .btn-aed {
+      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+      flex-shrink: 0; padding: 8px 10px; border-radius: 10px;
+      background: #c53030; color: white; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.3);
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+      line-height: 1.15; text-align: center; max-width: 92px;
+    }
+    .btn-aed:active { background: #9b2c2c; }
+    .btn-aed .heart { font-size: 1rem; }
+    nav.quick {
+      position: relative; z-index: 1;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+      max-width: 960px; margin: 10px auto 0; padding: 0 4px;
+    }
+    nav.quick a {
+      font-size: 0.78rem; padding: 5px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.15); color: white; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    #banner-criticita {
+      display: none; background: #c53030; color: white;
+      padding: 10px 16px; font-size: 0.9rem; text-align: center; font-weight: 600;
+    }
+    #banner-criticita.visible { display: block; }
     main {
-      max-width: 960px; margin: 20px auto; padding: 0 16px;
-      display: flex; flex-direction: column; gap: 18px;
+      max-width: 960px; margin: 16px auto; padding: 0 14px;
+      display: flex; flex-direction: column; gap: 16px;
     }
     .card {
-      background: white; border-radius: 12px; padding: 18px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      background: white; border-radius: 12px; padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden;
     }
-    .card h2 { font-size: 1.2rem; margin-bottom: 6px; color: #1e3a5f; }
-    .aggiornamento { font-size: 0.85rem; color: #666; margin-bottom: 14px; }
-
-    /* Meteo */
-    .meteo-box { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card h2 { font-size: 1.15rem; margin-bottom: 4px; color: #1e3a5f; }
+    .aggiornamento { font-size: 0.82rem; color: #666; margin-bottom: 12px; }
+    .meteo-box { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .meteo-giorno {
-      background: #f7fafc; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0;
-      display: flex; flex-direction: column; gap: 6px;
+      background: #f7fafc; border-radius: 10px; padding: 12px; border: 1px solid #e2e8f0;
     }
-    .meteo-giorno h3 { font-size: 0.95rem; color: #2c5282; }
-    .meteo-icona { width: 56px; height: 56px; object-fit: contain; }
-    .meteo-temp { font-size: 1.25rem; font-weight: 700; }
-    .meteo-testo { font-size: 0.9rem; color: #4a5568; }
-    .meteo-mappa {
-      width: 100%; border-radius: 10px; margin-top: 12px; border: 1px solid #e2e8f0;
-    }
+    .meteo-giorno h3 { font-size: 0.9rem; color: #2c5282; margin-bottom: 4px; }
+    .meteo-icona { width: 48px; height: 48px; object-fit: contain; }
+    .meteo-temp { font-size: 1.2rem; font-weight: 700; }
+    .meteo-testo { font-size: 0.88rem; color: #4a5568; }
+    .meteo-mappa { width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid #e2e8f0; }
     .settimana {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 8px; margin-top: 12px;
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 8px; margin-top: 10px;
     }
     .giorno-mini {
-      background: #edf2f7; border-radius: 8px; padding: 10px; text-align: center; font-size: 0.82rem;
+      background: #edf2f7; border-radius: 8px; padding: 8px; text-align: center; font-size: 0.8rem;
     }
-    .giorno-mini img { width: 40px; height: 40px; object-fit: contain; margin: 4px auto; display: block; }
-    .giorno-mini strong { display: block; margin-bottom: 2px; color: #2c5282; }
+    .giorno-mini img { width: 36px; height: 36px; margin: 4px auto; display: block; }
+    .giorno-mini strong { display: block; color: #2c5282; }
     .radar-wrap {
-      margin-top: 12px; border-radius: 10px; overflow: hidden;
-      border: 1px solid #e2e8f0; background: #f7fafc;
+      margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; height: 260px;
     }
-    .radar-wrap iframe { width: 100%; height: 280px; border: 0; }
-    .link-ext { display: inline-block; margin-top: 8px; font-size: 0.9rem; color: #2b6cb0; }
-
-    /* Pronto Soccorso */
+    .radar-wrap iframe { width: 100%; height: 100%; border: 0; }
+    .link-ext { display: inline-block; margin-top: 8px; font-size: 0.88rem; color: #2b6cb0; }
     .ospedale {
       border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 10px;
     }
+    .ospedale.critico { border-color: #fc8181; background: #fff5f5; }
     .ospedale-header {
       display: flex; justify-content: space-between; align-items: center;
       gap: 8px; flex-wrap: wrap; margin-bottom: 8px;
@@ -68,78 +107,150 @@
     .totale { font-weight: 700; }
     .codici { display: flex; flex-wrap: wrap; gap: 6px; }
     .codice {
-      display: flex; align-items: center; gap: 5px; padding: 3px 9px;
-      border-radius: 999px; font-size: 0.82rem; font-weight: 600; color: white;
+      display: flex; align-items: center; gap: 4px; padding: 3px 8px;
+      border-radius: 999px; font-size: 0.8rem; font-weight: 600; color: white;
     }
-    .codice span { background: rgba(255,255,255,0.25); padding: 0 6px; border-radius: 999px; }
+    .codice span { background: rgba(255,255,255,0.25); padding: 0 5px; border-radius: 999px; }
     .c-rosso { background: #e53e3e; }
     .c-arancione { background: #dd6b20; }
     .c-giallo { background: #d69e2e; }
     .c-verde { background: #38a169; }
     .c-blu { background: #3182ce; }
-
-    /* Allerte */
-    .riga-allerta { padding: 12px 0; border-bottom: 1px solid #edf2f7; }
+    .farmacia {
+      border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 8px;
+      background: #f0fff4;
+    }
+    .farmacia-nome { font-weight: 600; color: #276749; }
+    .farmacia-meta { font-size: 0.85rem; color: #4a5568; margin-top: 4px; }
+    .riga-allerta { padding: 10px 0; border-bottom: 1px solid #edf2f7; }
     .riga-allerta:last-child { border-bottom: none; }
     .allerta-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
     .badge {
-      color: white; font-size: 0.72rem; font-weight: 600;
+      color: white; font-size: 0.7rem; font-weight: 600;
       padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
     }
     .allerta-dettaglio { font-size: 0.85rem; color: #4a5568; }
-    .nessuna-allerta { text-align: center; padding: 14px; color: #38a169; font-weight: 500; }
-
-    /* Viabilità – elenco a scorrimento */
+    .nessuna-allerta { text-align: center; padding: 12px; color: #38a169; font-weight: 500; }
     .lista-viabilita-scroll {
-      max-height: 380px;
-      overflow-y: auto;
-      padding-right: 6px;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      background: #fafafa;
+      max-height: 380px; overflow-y: auto; overflow-x: hidden;
+      overscroll-behavior: contain; touch-action: pan-y;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #e2e8f0; border-radius: 10px; background: #fafafa; width: 100%;
     }
-    .lista-viabilita-scroll::-webkit-scrollbar { width: 8px; }
-    .lista-viabilita-scroll::-webkit-scrollbar-thumb {
-      background: #cbd5e0; border-radius: 8px;
-    }
-    .lista-viabilita-scroll::-webkit-scrollbar-track { background: transparent; }
-
+    .lista-viabilita-scroll::-webkit-scrollbar { width: 6px; }
+    .lista-viabilita-scroll::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 6px; }
     .evento {
       border-left: 4px solid #dd6b20; background: #fffaf0;
-      padding: 10px 12px; margin: 8px; border-radius: 0 8px 8px 0;
+      padding: 10px 12px; margin: 8px; border-radius: 0 8px 8px 0; word-break: break-word;
     }
-    .evento:first-child { margin-top: 8px; }
-    .evento:last-child { margin-bottom: 8px; }
     .evento.chiusura { border-left-color: #e53e3e; background: #fff5f5; }
     .evento.baustelle { border-left-color: #d69e2e; background: #fffff0; }
-    .evento-titolo { font-weight: 600; font-size: 0.95rem; margin-bottom: 4px; }
-    .evento-meta { font-size: 0.8rem; color: #718096; margin-bottom: 4px; }
-    .evento-testo { font-size: 0.88rem; color: #4a5568; }
-    .viabilita-info {
-      font-size: 0.85rem; color: #666; margin-top: 10px;
+    .evento-titolo { font-weight: 600; font-size: 0.92rem; }
+    .evento-meta { font-size: 0.78rem; color: #718096; margin: 2px 0; }
+    .evento-testo { font-size: 0.86rem; color: #4a5568; }
+    .viabilita-info { font-size: 0.82rem; color: #666; margin-top: 8px; }
+    .lista-aed-scroll {
+      max-height: 420px; overflow-y: auto; overflow-x: hidden;
+      overscroll-behavior: contain; touch-action: pan-y;
+      border: 1px solid #e2e8f0; border-radius: 10px; background: #fafafa;
     }
-
-    footer { text-align: center; padding: 18px; font-size: 0.8rem; color: #777; }
+    .aed-comune { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
+    .aed-comune:last-child { border-bottom: none; }
+    .aed-comune h3 { font-size: 0.95rem; color: #c53030; margin-bottom: 6px; }
+    .aed-item {
+      font-size: 0.86rem; color: #4a5568; padding: 3px 0 3px 8px;
+      border-left: 3px solid #feb2b2; margin-bottom: 4px;
+    }
+    .aed-item a { color: #2b6cb0; text-decoration: none; font-size: 0.8rem; }
+    #install-hint {
+      display: none; background: #ebf8ff; border: 1px solid #90cdf4; border-radius: 10px;
+      padding: 12px 14px; font-size: 0.88rem; color: #2c5282; position: relative;
+    }
+    #install-hint.visible { display: block; }
+    #install-hint button.close-hint {
+      position: absolute; top: 6px; right: 10px; border: 0; background: transparent;
+      font-size: 1.1rem; cursor: pointer; color: #4a5568;
+    }
+    footer {
+      text-align: center; padding: 20px 16px 28px; font-size: 0.8rem; color: #777;
+    }
+    footer .credit { margin-top: 6px; color: #a0aec0; font-size: 0.75rem; }
+    #btn-top {
+      position: fixed; right: 16px; bottom: 20px; z-index: 50;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: #2c5282; color: white; border: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+      font-size: 1.35rem; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0; margin: 0;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    #btn-top.show { opacity: 1; pointer-events: auto; }
+    #btn-telegram {
+      position: fixed; right: 16px; bottom: 76px; z-index: 50;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: #229ED9; color: white; border: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center;
+      text-decoration: none;
+    }
+    #btn-telegram svg { width: 26px; height: 26px; fill: white; }
     @media (max-width: 600px) {
       .meteo-box { grid-template-columns: 1fr; }
-      header h1 { font-size: 1.35rem; }
-      .lista-viabilita-scroll { max-height: 320px; }
+      header h1 { font-size: 1.25rem; }
+      .lista-viabilita-scroll { max-height: 300px; }
+      .btn-aed { font-size: 0.62rem; max-width: 84px; padding: 7px 8px; }
     }
   </style>
 </head>
 <body>
+  <div id="banner-criticita" role="alert"></div>
   <header>
-    <h1>Monitor Alto Adige</h1>
-    <p>Pronto Soccorso · Allerte · Meteo · Viabilità</p>
+    <div class="mountains" aria-hidden="true">
+      <svg viewBox="0 0 800 80" preserveAspectRatio="none">
+        <path fill="#fff" d="M0,80 L0,55 L40,40 L80,52 L120,28 L160,48 L200,20 L250,45 L300,15 L350,42 L400,10 L460,38 L520,18 L580,48 L640,22 L700,50 L760,30 L800,45 L800,80 Z"/>
+      </svg>
+    </div>
+    <div class="header-top">
+      <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener" title="Mappa AED esterna">
+        <span class="heart">♥</span>
+        <span>I NEED<br>AN AED</span>
+      </a>
+      <div class="logo-title">
+        <h1>Monitor Alto Adige</h1>
+        <p class="subtitle">Pronto Soccorso · Allerte · Meteo · Viabilità</p>
+      </div>
+    </div>
+    <nav class="quick" aria-label="Sezioni">
+      <a href="#meteo">Meteo</a>
+      <a href="#pronto-soccorso">Pronto Soccorso</a>
+      <a href="#farmacie">Farmacie</a>
+      <a href="#viabilita">Viabilità</a>
+      <a href="#allerte">Allerte</a>
+      <a href="#aed">AED</a>
+    </nav>
   </header>
-
   <main>
+    <div id="install-hint">
+      <button type="button" class="close-hint" aria-label="Chiudi" onclick="chiudiHint()">×</button>
+      <strong>Suggerimento:</strong> su smartphone puoi aggiungere questa pagina alla schermata Home
+      (menu del browser → “Aggiungi a Home” / “Installa app”) per aprirla come un’icona.
+    </div>
     <section class="card" id="meteo">
       <h2>🌤 Meteo Alto Adige</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-meteo"><p>Attendere…</p></div>
     </section>
-
+    <section class="card" id="pronto-soccorso">
+      <h2>🏥 Pronto Soccorso</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-ospedali"><p>Attendere…</p></div>
+    </section>
+    <section class="card" id="farmacie" style="display:none">
+      <h2>💊 Farmacie di turno</h2>
+      <p class="aggiornamento">Solo weekend e festivi · comuni principali</p>
+      <div class="lista-farmacie"><p>Caricamento…</p></div>
+    </section>
     <section class="card" id="viabilita">
       <h2>🚗 Viabilità</h2>
       <p class="aggiornamento">Caricamento…</p>
@@ -147,28 +258,38 @@
         <div class="lista-viabilita"><p style="padding:12px">Attendere…</p></div>
       </div>
       <p class="viabilita-info" id="viabilita-conteggio"></p>
-      <a class="link-ext" href="https://traffico.provincia.bz.it" target="_blank">Apri bollettino ufficiale viabilità →</a>
+      <a class="link-ext" href="https://traffico.provincia.bz.it" target="_blank" rel="noopener">Bollettino ufficiale →</a>
     </section>
-
-    <section class="card" id="pronto-soccorso">
-      <h2>🏥 Pronto Soccorso</h2>
-      <p class="aggiornamento">Caricamento…</p>
-      <div class="lista-ospedali"><p>Attendere…</p></div>
-    </section>
-
     <section class="card" id="allerte">
       <h2>🚨 Allerte Protezione Civile</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-allerte"><p>Attendere…</p></div>
     </section>
+    <section class="card" id="aed">
+      <h2>❤️ Defibrillatori pubblici (AED)</h2>
+      <p class="aggiornamento">Elenco per comune · dati Provincia / Protezione Civile</p>
+      <div class="lista-aed-scroll">
+        <div class="lista-aed"><p style="padding:12px">Caricamento…</p></div>
+      </div>
+      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Apri mappa interattiva →</a>
+    </section>
   </main>
-
   <footer>
-    <p>Dati pubblici · SABES · SIAG · Centrale Viabilità · Protezione Civile</p>
+    <p>Dati pubblici · SABES · SIAG · Centrale Viabilità · Protezione Civile · OpenAEDMap</p>
+    <p class="credit">done by Micio</p>
   </footer>
-
+  <a id="btn-telegram" href="https://t.me/" target="_blank" rel="noopener" title="Apri bot Telegram" aria-label="Telegram">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.2l-1.86 8.77c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.87 5.23-4.72c.23-.2-.05-.31-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.61-.6.13-.89l10.86-4.19c.5-.19.94.12.78.89z"/></svg>
+  </a>
+  <button type="button" id="btn-top" aria-label="Torna su" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
   <script>
+    const TELEGRAM_BOT = "Micioalertbot"; // es. "MonitorAltoAdigeBot"
+    if (TELEGRAM_BOT) {
+      document.getElementById("btn-telegram").href = "https://t.me/" + TELEGRAM_BOT;
+    }
     const COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"];
+    const COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"];
+    const COMUNI_AED = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives", "Appiano", "Lana", "Ortisei"];
     const TRIAGE = {
       "1": { nome: "Rosso", classe: "c-rosso" },
       "2": { nome: "Arancione", classe: "c-arancione" },
@@ -176,18 +297,41 @@
       "4": { nome: "Verde", classe: "c-verde" },
       "5": { nome: "Blu", classe: "c-blu" }
     };
-
+    const SOGLIE = { totale: 50, rossi: 5, arancioni: 10, gialli: 15, verdi: 30 };
     function coloreLivello(c) {
       return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
     }
-
     function formatDataIT(iso) {
-      if (!iso) return "—";
       try {
         return new Date(iso).toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" });
-      } catch { return iso; }
+      } catch { return iso || "—"; }
     }
-
+    function isWeekendOrHoliday() {
+      const d = new Date();
+      if (d.getDay() === 0 || d.getDay() === 6) return true;
+      const md = (d.getMonth() + 1) + "-" + d.getDate();
+      return ["1-1","1-6","4-25","5-1","6-2","8-15","11-1","12-8","12-25","12-26"].includes(md);
+    }
+    function aggiornaBanner(items) {
+      const el = document.getElementById("banner-criticita");
+      if (!items.length) { el.classList.remove("visible"); el.innerHTML = ""; return; }
+      el.innerHTML = "⚠️ Criticità: " + items.join(" · ");
+      el.classList.add("visible");
+    }
+    function chiudiHint() {
+      document.getElementById("install-hint").classList.remove("visible");
+      try { localStorage.setItem("hideInstallHint", "1"); } catch (e) {}
+    }
+    (function () {
+      try {
+        if (!localStorage.getItem("hideInstallHint") && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+          document.getElementById("install-hint").classList.add("visible");
+        }
+      } catch (e) {}
+    })();
+    window.addEventListener("scroll", () => {
+      document.getElementById("btn-top").classList.toggle("show", window.scrollY > 400);
+    });
     async function caricaMeteo() {
       const cont = document.querySelector(".lista-meteo");
       const agg = document.querySelector("#meteo .aggiornamento");
@@ -196,113 +340,49 @@
         const dati = await res.json();
         const oggi = dati.today || {};
         const domani = dati.tomorrow || {};
-        const stazioni = oggi.stationData || [];
-        const bz = stazioni[0] || {};
+        const bz = (oggi.stationData || [])[0] || {};
         const symOggi = bz.symbol || {};
-        const stazioniDomani = (domani.stationData || []);
-        const bzDomani = stazioniDomani[0] || {};
-        const symDomani = bzDomani.symbol || {};
+        const bzD = (domani.stationData || [])[0] || {};
+        const symD = bzD.symbol || {};
         const forecasts = dati.dayForecasts || [];
-        const mappaUrl = oggi.imageUrl || "";
-
         let settimana = forecasts.map(g => {
           const sym = g.symbol || {};
-          const desc = sym.description || "—";
-          const icon = sym.imageUrl || "";
-          const tmax = g.tempMax ? `${g.tempMax.min}–${g.tempMax.max}°` : "—";
-          const tmin = g.tempMin ? `${g.tempMin.min}–${g.tempMin.max}°` : "—";
-          return `<div class="giorno-mini">
-            <strong>${formatDataIT(g.date)}</strong>
-            ${icon ? `<img src="${icon}" alt="${desc}" loading="lazy">` : ""}
-            ${desc}<br>
-            <span style="color:#2d3748">Max ${tmax}<br>Min ${tmin}</span>
-          </div>`;
+          const tmax = g.tempMax ? g.tempMax.min + "–" + g.tempMax.max + "°" : "—";
+          const tmin = g.tempMin ? g.tempMin.min + "–" + g.tempMin.max + "°" : "—";
+          return `<div class="giorno-mini"><strong>${formatDataIT(g.date)}</strong>${sym.imageUrl ? `<img src="${sym.imageUrl}" alt="">` : ""}${sym.description || "—"}<br>Max ${tmax}<br>Min ${tmin}</div>`;
         }).join("");
-
         cont.innerHTML = `
           <div class="meteo-box">
             <div class="meteo-giorno">
               <h3>Oggi – ${oggi.title || "—"}</h3>
-              ${symOggi.imageUrl ? `<img class="meteo-icona" src="${symOggi.imageUrl}" alt="${symOggi.description || ""}">` : ""}
+              ${symOggi.imageUrl ? `<img class="meteo-icona" src="${symOggi.imageUrl}" alt="">` : ""}
               <div class="meteo-temp">${bz.min != null ? bz.min + "° / " + bz.max + "°" : (oggi.temperatures || "")}</div>
               <div class="meteo-testo"><b>Bolzano:</b> ${symOggi.description || "—"}</div>
               <div class="meteo-testo">${oggi.weather || ""}</div>
             </div>
             <div class="meteo-giorno">
               <h3>Domani – ${domani.title || "—"}</h3>
-              ${symDomani.imageUrl ? `<img class="meteo-icona" src="${symDomani.imageUrl}" alt="${symDomani.description || ""}">` : ""}
-              <div class="meteo-temp">${bzDomani.min != null ? bzDomani.min + "° / " + bzDomani.max + "°" : (domani.temperatures || "—")}</div>
-              <div class="meteo-testo"><b>Bolzano:</b> ${symDomani.description || "—"}</div>
+              ${symD.imageUrl ? `<img class="meteo-icona" src="${symD.imageUrl}" alt="">` : ""}
+              <div class="meteo-temp">${bzD.min != null ? bzD.min + "° / " + bzD.max + "°" : (domani.temperatures || "—")}</div>
+              <div class="meteo-testo"><b>Bolzano:</b> ${symD.description || "—"}</div>
               <div class="meteo-testo">${domani.weather || ""}</div>
             </div>
           </div>
-          ${mappaUrl ? `<img class="meteo-mappa" src="${mappaUrl}" alt="Mappa meteo Alto Adige" loading="lazy">` : ""}
-          <h3 style="margin-top:16px;font-size:1rem;color:#2c5282">Prognosi prossimi giorni</h3>
-          <div class="settimana">${settimana || "<p>Non disponibile</p>"}</div>
-          <h3 style="margin-top:16px;font-size:1rem;color:#2c5282">Radar precipitazioni</h3>
+          ${oggi.imageUrl ? `<img class="meteo-mappa" src="${oggi.imageUrl}" alt="Mappa meteo" loading="lazy">` : ""}
+          <h3 style="margin-top:14px;font-size:1rem;color:#2c5282">Prognosi</h3>
+          <div class="settimana">${settimana || "—"}</div>
+          <h3 style="margin-top:14px;font-size:1rem;color:#2c5282">Radar</h3>
           <div class="radar-wrap">
-            <iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar meteo"></iframe>
+            <iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe>
           </div>
-          <a class="link-ext" href="https://meteo.provincia.bz.it" target="_blank">Meteo e radar ufficiali Provincia →</a>
-        `;
+          <a class="link-ext" href="https://meteo.provincia.bz.it" target="_blank" rel="noopener">Meteo ufficiale →</a>`;
         agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
-      } catch (e) {
-        console.error(e);
-        cont.innerHTML = "<p>Errore caricamento meteo.</p>";
-        agg.textContent = "Errore";
-      }
+      } catch (e) { cont.innerHTML = "<p>Errore caricamento meteo.</p>"; }
     }
-
-    async function caricaViabilita() {
-      const cont = document.querySelector(".lista-viabilita");
-      const agg = document.querySelector("#viabilita .aggiornamento");
-      const conteggio = document.getElementById("viabilita-conteggio");
-      try {
-        const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
-        const dati = await res.json();
-        if (!Array.isArray(dati) || !dati.length) {
-          cont.innerHTML = "<p style='padding:12px'>Nessun evento segnalato.</p>";
-          return;
-        }
-        const ordine = { SPERRE: 0, BAUSTELLE: 1 };
-        const sorted = [...dati].sort((a, b) => {
-          return (ordine[a.subTycodeValue] ?? 9) - (ordine[b.subTycodeValue] ?? 9);
-        });
-
-        let html = "";
-        sorted.forEach(ev => {
-          const tipo = ev.subTycodeValue || "";
-          const cls = tipo === "SPERRE" ? "chiusura" : (tipo === "BAUSTELLE" ? "baustelle" : "");
-          const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
-          const zona = ev.messageZoneDescIt || "";
-          const grad = ev.messageGradDescIt || "";
-          const testo = ev.placeIt || ev.descriptionIt || "";
-          const dal = ev.beginDate || "";
-          const al = ev.endDate || "";
-          html += `<div class="evento ${cls}">
-            <div class="evento-titolo">${strada || "Evento viabilità"}</div>
-            <div class="evento-meta">${grad}${zona ? " · " + zona : ""} · ${dal}${al ? " → " + al : ""}</div>
-            <div class="evento-testo">${testo}</div>
-          </div>`;
-        });
-        cont.innerHTML = html;
-        const nChiusure = sorted.filter(e => e.subTycodeValue === "SPERRE").length;
-        const nCantieri = sorted.filter(e => e.subTycodeValue === "BAUSTELLE").length;
-        conteggio.textContent = `${sorted.length} eventi · ${nChiusure} chiusure · ${nCantieri} cantieri · scorri l’elenco`;
-        const pub = dati[0]?.publishDateTime;
-        agg.textContent = pub
-          ? "Bollettino aggiornato: " + new Date(pub).toLocaleString("it-IT")
-          : "Aggiornato: " + new Date().toLocaleString("it-IT");
-      } catch (e) {
-        console.error(e);
-        cont.innerHTML = "<p style='padding:12px'>Errore caricamento viabilità.</p>";
-        agg.textContent = "Errore";
-      }
-    }
-
     async function caricaProntoSoccorso() {
       const cont = document.querySelector(".lista-ospedali");
       const agg = document.querySelector("#pronto-soccorso .aggiornamento");
+      const criticita = [];
       try {
         const res = await fetch("https://dati.retecivica.bz.it/services/PS_Queue/json");
         const dati = await res.json();
@@ -319,40 +399,93 @@
         let html = "";
         Object.keys(ospedali).sort().forEach(nome => {
           const o = ospedali[nome];
+          const c = o.codici;
+          const critico = o.totale >= SOGLIE.totale || (c["1"] || 0) >= SOGLIE.rossi
+            || (c["2"] || 0) >= SOGLIE.arancioni || (c["3"] || 0) >= SOGLIE.gialli
+            || (c["4"] || 0) >= SOGLIE.verdi;
+          if (critico) criticita.push("PS " + nome.split("/")[0].trim());
           let codiciHtml = "";
           ["1","2","3","4","5"].forEach(cod => {
             const t = TRIAGE[cod];
-            const n = o.codici[cod] || 0;
-            codiciHtml += `<div class="codice ${t.classe}">${t.nome} <span>${n}</span></div>`;
+            codiciHtml += `<div class="codice ${t.classe}">${t.nome} <span>${c[cod] || 0}</span></div>`;
           });
-          html += `<div class="ospedale">
-            <div class="ospedale-header">
-              <span class="ospedale-nome">${nome}</span>
-              <span class="totale">${o.totale} in attesa</span>
-            </div>
-            <div class="codici">${codiciHtml}</div>
-          </div>`;
+          html += `<div class="ospedale${critico ? " critico" : ""}">
+            <div class="ospedale-header"><span class="ospedale-nome">${nome}</span><span class="totale">${o.totale} in attesa</span></div>
+            <div class="codici">${codiciHtml}</div></div>`;
         });
         cont.innerHTML = html || "<p>Nessun dato</p>";
-        agg.textContent = ultimo
-          ? "Ultimo aggiornamento: " + new Date(ultimo).toLocaleString("it-IT")
-          : "Aggiornato: " + new Date().toLocaleString("it-IT");
-      } catch (e) {
-        cont.innerHTML = "<p>Errore caricamento Pronto Soccorso.</p>";
-        agg.textContent = "Errore";
-      }
+        agg.textContent = ultimo ? "Ultimo aggiornamento: " + new Date(ultimo).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
+        window.__criticitaPS = criticita;
+        mergeBanner();
+      } catch (e) { cont.innerHTML = "<p>Errore Pronto Soccorso.</p>"; }
     }
-
+    async function caricaFarmacie() {
+      const sec = document.getElementById("farmacie");
+      if (!isWeekendOrHoliday()) { sec.style.display = "none"; return; }
+      sec.style.display = "block";
+      const cont = document.querySelector(".lista-farmacie");
+      try {
+        const res = await fetch("https://daten.buergernetz.bz.it/services/pharmacy/v1/json");
+        const dati = await res.json();
+        const on = (Array.isArray(dati) ? dati : []).filter(x => x.IS_TURN == 1);
+        const filtrati = on.filter(x => {
+          const c = (x.GEME_DESC_I || "").toLowerCase();
+          return COMUNI_FARM.some(n => c.includes(n.toLowerCase()));
+        });
+        const lista = filtrati.length ? filtrati : on;
+        if (!lista.length) { cont.innerHTML = "<p>Nessuna farmacia di turno nei comuni principali.</p>"; return; }
+        let html = "";
+        lista.forEach(f => {
+          const nome = f.PHAR_DESC_I || f.PHAR_DESC_D || "Farmacia";
+          const ind = f.PHAR_ADRESS_I || "";
+          const comune = f.GEME_DESC_I || "";
+          const tel = f.PHAR_PHONE || "";
+          const note = f.TURN_NOTES_I || "";
+          const orario = f.TURN_TIMETABLE || f.PHAR_TIMETABLE || "";
+          html += `<div class="farmacia"><div class="farmacia-nome">${nome}</div>
+            <div class="farmacia-meta">${comune}${ind ? " · " + ind : ""}${tel ? " · ☎ " + tel : ""}</div>
+            ${orario ? `<div class="farmacia-meta">🕐 ${orario}</div>` : ""}
+            ${note ? `<div class="farmacia-meta">${note}</div>` : ""}</div>`;
+        });
+        cont.innerHTML = html;
+      } catch (e) { cont.innerHTML = "<p>Errore caricamento farmacie.</p>"; }
+    }
+    async function caricaViabilita() {
+      const cont = document.querySelector(".lista-viabilita");
+      const agg = document.querySelector("#viabilita .aggiornamento");
+      const conteggio = document.getElementById("viabilita-conteggio");
+      try {
+        const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
+        const dati = await res.json();
+        if (!Array.isArray(dati) || !dati.length) { cont.innerHTML = "<p style='padding:12px'>Nessun evento.</p>"; return; }
+        const ordine = { SPERRE: 0, BAUSTELLE: 1 };
+        const sorted = [...dati].sort((a, b) => (ordine[a.subTycodeValue] ?? 9) - (ordine[b.subTycodeValue] ?? 9));
+        let html = "";
+        sorted.forEach(ev => {
+          const tipo = ev.subTycodeValue || "";
+          const cls = tipo === "SPERRE" ? "chiusura" : (tipo === "BAUSTELLE" ? "baustelle" : "");
+          const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
+          html += `<div class="evento ${cls}">
+            <div class="evento-titolo">${strada || "Evento"}</div>
+            <div class="evento-meta">${ev.messageGradDescIt || ""}${ev.messageZoneDescIt ? " · " + ev.messageZoneDescIt : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
+            <div class="evento-testo">${ev.placeIt || ""}</div></div>`;
+        });
+        cont.innerHTML = html;
+        const nC = sorted.filter(e => e.subTycodeValue === "SPERRE").length;
+        const nB = sorted.filter(e => e.subTycodeValue === "BAUSTELLE").length;
+        conteggio.textContent = `${sorted.length} eventi · ${nC} chiusure · ${nB} cantieri · scorri l’elenco`;
+        const pub = dati[0]?.publishDateTime;
+        agg.textContent = pub ? "Bollettino: " + new Date(pub).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) { cont.innerHTML = "<p style='padding:12px'>Errore viabilità.</p>"; }
+    }
     async function caricaAllerte() {
       const cont = document.querySelector(".lista-allerte");
       const agg = document.querySelector("#allerte .aggiornamento");
+      const criticita = [];
       try {
         const res = await fetch(`https://allertameteo.app/api/alert/${COMUNI.join(",")}`);
         const dati = await res.json();
-        if (!dati.success) {
-          cont.innerHTML = "<p>Errore caricamento allerte.</p>";
-          return;
-        }
+        if (!dati.success) { cont.innerHTML = "<p>Errore allerte.</p>"; return; }
         let data = dati.data;
         if (data && data.comune) data = { [data.comune]: data };
         let html = "";
@@ -361,31 +494,73 @@
           if (!info) continue;
           const oggi = info.oggi?.allerta || {};
           const colore = (oggi.colore || "verde").toLowerCase();
-          const livello = colore.charAt(0).toUpperCase() + colore.slice(1);
+          if (["gialla","arancione","rossa"].includes(colore)) criticita.push("Allerta " + (info.comune || nome));
           html += `<div class="riga-allerta">
-            <div class="allerta-header">
-              <span class="badge" style="background-color:${coloreLivello(colore)}">${livello}</span>
-              <strong>${info.comune || nome}</strong>
-            </div>
-            <div class="allerta-dettaglio">
-              <div>${oggi.descrizione || "—"}</div>
-              <div>Zona: ${info.zona || "—"}</div>
-            </div>
-          </div>`;
+            <div class="allerta-header"><span class="badge" style="background:${coloreLivello(colore)}">${colore}</span>
+            <strong>${info.comune || nome}</strong></div>
+            <div class="allerta-dettaglio">${oggi.descrizione || "—"} · Zona: ${info.zona || "—"}</div></div>`;
         }
         cont.innerHTML = html || `<div class="nessuna-allerta">Nessuna allerta attiva</div>`;
         agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+        window.__criticitaAllerte = criticita;
+        mergeBanner();
+      } catch (e) { cont.innerHTML = "<p>Errore di connessione.</p>"; }
+    }
+    async function caricaAED() {
+      const cont = document.querySelector(".lista-aed");
+      try {
+        const url = "https://geoservices2.civis.bz.it/geoserver/pczs-PointsOfInterest/ows"
+          + "?service=WFS&version=2.0.0&request=GetFeature"
+          + "&typeName=pczs-PointsOfInterest:Defibrillator-Stations"
+          + "&outputFormat=application/json&count=500";
+        const res = await fetch(url);
+        const dati = await res.json();
+        const features = dati.features || [];
+        const perComune = {};
+        features.forEach(f => {
+          const p = f.properties || {};
+          const comune = p.MUNICIPALITY_IT || p.MUNICIPALITY_DE || "Altro";
+          if (!perComune[comune]) perComune[comune] = [];
+          const via = [p.STREET_IT || p.STREET_DE, p.HOUSE_NUMBER].filter(Boolean).join(" ");
+          const desc = p.DESCRIPTION_IT || p.DESCRIPTION_DE || "";
+          perComune[comune].push({ via, desc, lat: p.LATITUDE, lon: p.LONGITUDE });
+        });
+        const nomi = Object.keys(perComune).sort((a, b) => {
+          const ia = COMUNI_AED.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
+          const ib = COMUNI_AED.findIndex(c => b.toLowerCase().includes(c.toLowerCase()));
+          if (ia >= 0 && ib < 0) return -1;
+          if (ib >= 0 && ia < 0) return 1;
+          if (ia >= 0 && ib >= 0) return ia - ib;
+          return a.localeCompare(b, "it");
+        });
+        let html = "";
+        nomi.forEach(comune => {
+          const items = perComune[comune];
+          html += `<div class="aed-comune"><h3>♥ ${comune} (${items.length})</h3>`;
+          items.forEach(it => {
+            let riga = it.via || "Indirizzo non disponibile";
+            if (it.desc) riga += " – " + it.desc;
+            let maps = "";
+            if (it.lat && it.lon) maps = ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">mappa</a>`;
+            html += `<div class="aed-item">${riga}${maps}</div>`;
+          });
+          html += `</div>`;
+        });
+        cont.innerHTML = html || "<p style='padding:12px'>Nessun AED trovato.</p>";
       } catch (e) {
-        cont.innerHTML = "<p>Errore di connessione.</p>";
-        agg.textContent = "Errore";
+        cont.innerHTML = "<p style='padding:12px'>Errore caricamento AED. <a href='https://openaedmap.org/it/#map=10/46.5/11.35' target='_blank'>Apri mappa esterna</a></p>";
       }
     }
-
+    function mergeBanner() {
+      aggiornaBanner([...(window.__criticitaPS || []), ...(window.__criticitaAllerte || [])]);
+    }
     document.addEventListener("DOMContentLoaded", () => {
       caricaMeteo();
-      caricaViabilita();
       caricaProntoSoccorso();
+      caricaFarmacie();
+      caricaViabilita();
       caricaAllerte();
+      caricaAED();
     });
   </script>
 </body>
