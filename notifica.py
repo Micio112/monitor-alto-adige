@@ -118,16 +118,27 @@ def already_sent(event_key, ttl_hours=36):
     return False
 
 
-def daily_flag(name):
-    """True se già eseguito oggi (con nome flag)."""
+def has_daily_flag(name):
+    """True se il report è già stato inviato oggi."""
+    st = load_state("daily", {})
+    return st.get(name) == str(ora_roma().date())
+
+
+def set_daily_flag(name):
+    """Segna il report come inviato oggi (chiamare solo dopo invio riuscito)."""
     st = load_state("daily", {})
     today = str(ora_roma().date())
-    if st.get(name) == today:
-        return True
     st[name] = today
-    # tieni solo oggi
     st = {k: v for k, v in st.items() if v == today}
     save_state("daily", st)
+
+
+def daily_flag(name):
+    """Compatibilità: True se già fatto oggi; altrimenti marca e ritorna False.
+    Preferire has_daily_flag + set_daily_flag dopo invio."""
+    if has_daily_flag(name):
+        return True
+    set_daily_flag(name)
     return False
 
 
@@ -213,24 +224,37 @@ def formatta_ospedale(nome, d):
 
 
 def controlla_ps():
+    """Max 1 notifica/ora per lo stesso PS con lo stesso tipo di motivo."""
     messaggi = []
     for nome, d in prendi_pronto_soccorso().items():
         c = d["codici"]
         motivi = []
+        tipi = []  # chiavi stabili senza numeri (per anti-spam)
         if d["totale"] >= SOGLIA_TOTALE:
             motivi.append(f"totale ≥ {SOGLIA_TOTALE} ({d['totale']})")
+            tipi.append("totale")
         if c["1"] >= SOGLIA_ROSSI:
             motivi.append(f"rossi ≥ {SOGLIA_ROSSI} ({c['1']})")
+            tipi.append("rossi")
         if c["2"] >= SOGLIA_ARANCIONI:
             motivi.append(f"arancioni ≥ {SOGLIA_ARANCIONI} ({c['2']})")
+            tipi.append("arancioni")
         if c["3"] >= SOGLIA_GIALLI:
             motivi.append(f"gialli ≥ {SOGLIA_GIALLI} ({c['3']})")
+            tipi.append("gialli")
         if c["4"] >= SOGLIA_VERDI:
             motivi.append(f"verdi ≥ {SOGLIA_VERDI} ({c['4']})")
-        if motivi:
-            testo = formatta_ospedale(nome, d)
-            testo += "\n⚠️ Motivo: " + ", ".join(motivi)
-            messaggi.append(testo)
+            tipi.append("verdi")
+        if not motivi:
+            continue
+        # 1 notifica all'ora per stesso ospedale + stessi tipi di soglia
+        key = "ps|" + nome + "|" + "+".join(sorted(tipi))
+        if already_sent(key, ttl_hours=1):
+            print(f"PS saltato (già inviato <1h): {nome} ({', '.join(tipi)})")
+            continue
+        testo = formatta_ospedale(nome, d)
+        testo += "\n⚠️ Motivo: " + ", ".join(motivi)
+        messaggi.append(testo)
     return messaggi
 
 
@@ -482,33 +506,80 @@ def nuove_chiusure_e_incidenti():
 
 
 # ========== FARMACIE ==========
-def prendi_farmacie_turno():
+def _testo_turno_farmacia(f):
+    return " ".join([
+        str(f.get("TURN_TIMETABLE") or ""),
+        str(f.get("PHAR_TIMETABLE") or ""),
+        str(f.get("TURN_NOTES_I") or ""),
+        str(f.get("TURN_NOTES_D") or ""),
+        str(f.get("PHAR_DESC_I") or ""),
+    ]).lower()
+
+
+def is_farmacia_notturna(f):
+    """True se il turno indica servizio notturno (sera/notte)."""
+    t = _testo_turno_farmacia(f)
+    if any(k in t for k in ("notte", "nacht", "notturno", "notturna", "24h", "h24", "24 ore")):
+        return True
+    # orari tipici serali/notturni
+    if any(k in t for k in ("20:", "21:", "22:", "23:", "00:", "0:00", "01:", "02:", "03:", "04:", "05:", "06:")):
+        # se c'è solo mattina senza sera, non è notte
+        if any(k in t for k in ("20:", "21:", "22:", "23:", "notte", "nacht")):
+            return True
+        if "8:" in t or "08:" in t or "9:" in t or "09:" in t:
+            return False
+        return True
+    return False
+
+
+def is_farmacia_diurna(f):
+    """True se il turno è diurno (non solo notturno)."""
+    if is_farmacia_notturna(f):
+        t = _testo_turno_farmacia(f)
+        # notturno puro senza orari di giorno
+        if any(k in t for k in ("mattina", "giorno", "8:", "08:", "9:", "09:", "10:", "12:", "13:", "14:", "15:", "16:", "17:", "18:")):
+            return True  # turno misto: include anche di giorno
+        return False
+    return True
+
+
+def prendi_farmacie_turno(modo="tutte"):
+    """modo: 'notte' | 'giorno' | 'tutte'."""
     try:
-        dati = requests.get("http://daten.buergernetz.bz.it/services/pharmacy/v1/json", timeout=20).json()
+        dati = requests.get("https://daten.buergernetz.bz.it/services/pharmacy/v1/json", timeout=20).json()
         on = [x for x in dati if x.get("IS_TURN") == 1]
-        # filtra comuni principali
         filtrati = []
         for x in on:
             comune = x.get("GEME_DESC_I") or ""
             if any(c.lower() in comune.lower() for c in COMUNI_FARM):
                 filtrati.append(x)
-        return filtrati or on
+        lista = filtrati or on
+        if modo == "notte":
+            solo = [f for f in lista if is_farmacia_notturna(f)]
+            return solo if solo else lista  # fallback se API non distingue
+        if modo == "giorno":
+            solo = [f for f in lista if is_farmacia_diurna(f)]
+            return solo if solo else lista
+        return lista
     except Exception as e:
         print("Errore farmacie:", e)
         return []
 
 
-def report_farmacie(quando="mattina"):
-    farm = prendi_farmacie_turno()
+def report_farmacie(quando="sera"):
+    """quando: 'sera' → solo notturne; 'mattina' → solo diurne."""
+    modo = "notte" if quando in ("sera", "notte", "notturno") else "giorno"
+    etichetta = "turno di notte" if modo == "notte" else "turno di giorno"
+    farm = prendi_farmacie_turno(modo)
     if not farm:
-        return f"💊 <b>Farmacie di turno</b>\n<i>{ora_str()}</i>\n\nNessun dato disponibile."
+        return f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n\nNessun dato disponibile."
 
     per_comune = {}
     for f in farm:
         c = f.get("GEME_DESC_I") or "Altro"
         per_comune.setdefault(c, []).append(f)
 
-    testo = f"💊 <b>Farmacie di turno ({quando})</b>\n<i>{ora_str()}</i>\n"
+    testo = f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n"
     for comune in sorted(per_comune.keys()):
         testo += f"\n<b>{comune}</b>\n"
         for f in per_comune[comune]:
@@ -553,45 +624,59 @@ def controlla_emergenze():
     else:
         print("Nessuna condizione di allerta")
 
-    # Report automatici in fascia oraria (più affidabili del solo cron)
+    # Report automatici in fascia oraria (il flag si marca solo DOPO invio)
     h = ora_roma().hour
     m = ora_roma().minute
 
-    # Viabilità mattina 6:00–8:30
-    if 6 <= h < 9 or (h == 5 and m >= 45):
-        if not daily_flag("viabilita_mattina"):
+    # Viabilità mattina: finestra ampia 5:30–10:00 (così un run del cron basta)
+    if (h == 5 and m >= 30) or (6 <= h < 10):
+        if not has_daily_flag("viabilita_mattina"):
             print("Invio report viabilità (fascia mattina)...")
             invia_messaggio(report_viabilita_mattutino())
+            set_daily_flag("viabilita_mattina")
+        else:
+            print("Report viabilità già inviato oggi")
 
-    # Meteo mattina 7:00–9:30
+    # Meteo mattina 7:00–10:00
     if 7 <= h < 10:
-        if not daily_flag("meteo_mattina"):
+        if not has_daily_flag("meteo_mattina"):
             print("Invio bollettino meteo (fascia mattina)...")
             t = prendi_bollettino_meteo()
             if t:
                 invia_messaggio(t)
+                set_daily_flag("meteo_mattina")
 
-    # Meteo secondo slot ~11
+    # Meteo secondo slot ~10–12
     if 10 <= h < 12:
-        if not daily_flag("meteo_tarda_mattina"):
+        if not has_daily_flag("meteo_tarda_mattina"):
             t = prendi_bollettino_meteo()
             if t:
                 invia_messaggio(t)
+                set_daily_flag("meteo_tarda_mattina")
 
-    # Farmacie weekend mattina 8–10 e sera 18–20
-    if is_weekend_or_holiday():
-        if 8 <= h < 10 and not daily_flag("farm_mattina"):
-            invia_messaggio(report_farmacie("mattina"))
-        if 18 <= h < 20 and not daily_flag("farm_sera"):
+    # Farmacie SERA: ogni giorno 19:30–21:30 → solo turno di NOTTE
+    if (h == 19 and m >= 30) or h == 20 or (h == 21 and m < 30):
+        if not has_daily_flag("farm_sera"):
+            print("Invio farmacie notturne...")
             invia_messaggio(report_farmacie("sera"))
+            set_daily_flag("farm_sera")
+
+    # Farmacie MATTINA: solo weekend/festivi 7:30–10:00 → solo turno di GIORNO
+    if is_weekend_or_holiday():
+        if (h == 7 and m >= 30) or 8 <= h < 10:
+            if not has_daily_flag("farm_mattina"):
+                print("Invio farmacie diurne (weekend/festivo)...")
+                invia_messaggio(report_farmacie("mattina"))
+                set_daily_flag("farm_mattina")
 
 
 def invia_meteo_giornaliero():
-    if daily_flag("meteo_manual"):
+    if has_daily_flag("meteo_manual"):
         print("Meteo già inviato oggi (flag)")
     t = prendi_bollettino_meteo()
     if t:
         invia_messaggio(t)
+        set_daily_flag("meteo_manual")
 
 
 if __name__ == "__main__":
@@ -601,6 +686,7 @@ if __name__ == "__main__":
             invia_meteo_giornaliero()
         elif modo == "viabilita":
             invia_messaggio(report_viabilita_mattutino())
+            set_daily_flag("viabilita_mattina")
         elif modo == "farmacie":
             invia_messaggio(report_farmacie("sera" if ora_roma().hour >= 15 else "mattina"))
         else:
