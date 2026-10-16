@@ -506,41 +506,59 @@ def nuove_chiusure_e_incidenti():
 
 
 # ========== FARMACIE ==========
-def _testo_turno_farmacia(f):
-    return " ".join([
-        str(f.get("TURN_TIMETABLE") or ""),
-        str(f.get("PHAR_TIMETABLE") or ""),
-        str(f.get("TURN_NOTES_I") or ""),
-        str(f.get("TURN_NOTES_D") or ""),
-        str(f.get("PHAR_DESC_I") or ""),
-    ]).lower()
+def _parse_orario_turno(f):
+    """Estrae (start_min, end_min) da TURN_TIMETABLE tipo '19:00 - 23:59' o '00:00 - 08:29'."""
+    import re
+    tt = (f.get("TURN_TIMETABLE") or "").strip()
+    m = re.search(r"(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})", tt)
+    if not m:
+        return None
+    h1, m1, h2, m2 = map(int, m.groups())
+    return h1 * 60 + m1, h2 * 60 + m2
 
 
 def is_farmacia_notturna(f):
-    """True se il turno indica servizio notturno (sera/notte)."""
-    t = _testo_turno_farmacia(f)
-    if any(k in t for k in ("notte", "nacht", "notturno", "notturna", "24h", "h24", "24 ore")):
-        return True
-    # orari tipici serali/notturni
-    if any(k in t for k in ("20:", "21:", "22:", "23:", "00:", "0:00", "01:", "02:", "03:", "04:", "05:", "06:")):
-        # se c'è solo mattina senza sera, non è notte
-        if any(k in t for k in ("20:", "21:", "22:", "23:", "notte", "nacht")):
+    """Turno serale (es. 19:00–23:59) e/o dopo mezzanotte (es. 00:00–08:29).
+
+    L'API pubblica spesso due record IS_TURN: uno fino a mezzanotte e uno da 00:00.
+    Il report serale deve includerli entrambi.
+    """
+    orari = _parse_orario_turno(f)
+    if orari:
+        start, end = orari
+        # Fascia serale tipica: inizia dalle 18:00 in poi (spesso 19:00–23:59)
+        if start >= 18 * 60:
             return True
-        if "8:" in t or "08:" in t or "9:" in t or "09:" in t:
-            return False
+        # Fascia dopo mezzanotte: inizia a 00:00 (fino al mattino o al pomeriggio)
+        if start <= 30:  # 00:00–00:30
+            return True
+        # Intervallo che copre ore notturne centrali
+        if start <= 6 * 60 and end <= 12 * 60:
+            return True
+    t = " ".join([
+        str(f.get("TURN_TIMETABLE") or ""),
+        str(f.get("TURN_NOTES_I") or ""),
+        str(f.get("TURN_NOTES_D") or ""),
+    ]).lower()
+    if any(k in t for k in ("notte", "nacht", "notturno", "notturna", "24h", "h24")):
         return True
     return False
 
 
 def is_farmacia_diurna(f):
-    """True se il turno è diurno (non solo notturno)."""
-    if is_farmacia_notturna(f):
-        t = _testo_turno_farmacia(f)
-        # notturno puro senza orari di giorno
-        if any(k in t for k in ("mattina", "giorno", "8:", "08:", "9:", "09:", "10:", "12:", "13:", "14:", "15:", "16:", "17:", "18:")):
-            return True  # turno misto: include anche di giorno
-        return False
-    return True
+    """Turno diurno: copre la giornata, esclude solo la fascia puramente serale 19–23:59."""
+    orari = _parse_orario_turno(f)
+    if orari:
+        start, end = orari
+        # Solo sera fino a mezzanotte → non diurno
+        if start >= 18 * 60 and end >= 23 * 60:
+            return False
+        # Solo dopo mezzanotte fino al mattino presto → notturno, non diurno
+        if start <= 30 and end <= 10 * 60:
+            return False
+        # Altrimenti (es. 00:00–18:59, 08:30–23:59, 08:00–19:00) → utile di giorno
+        return True
+    return not is_farmacia_notturna(f)
 
 
 def prendi_farmacie_turno(modo="tutte"):
@@ -556,9 +574,11 @@ def prendi_farmacie_turno(modo="tutte"):
         lista = filtrati or on
         if modo == "notte":
             solo = [f for f in lista if is_farmacia_notturna(f)]
-            return solo if solo else lista  # fallback se API non distingue
+            print(f"Farmacie notte: {len(solo)} (su {len(lista)} in turno)")
+            return solo if solo else lista
         if modo == "giorno":
             solo = [f for f in lista if is_farmacia_diurna(f)]
+            print(f"Farmacie giorno: {len(solo)} (su {len(lista)} in turno)")
             return solo if solo else lista
         return lista
     except Exception as e:
@@ -567,12 +587,21 @@ def prendi_farmacie_turno(modo="tutte"):
 
 
 def report_farmacie(quando="sera"):
-    """quando: 'sera' → solo notturne; 'mattina' → solo diurne."""
+    """quando: 'sera' → turno notte (sera + dopo mezzanotte); 'mattina' → diurne."""
     modo = "notte" if quando in ("sera", "notte", "notturno") else "giorno"
-    etichetta = "turno di notte" if modo == "notte" else "turno di giorno"
+    etichetta = "turno di notte (sera + dopo mezzanotte)" if modo == "notte" else "turno di giorno"
     farm = prendi_farmacie_turno(modo)
     if not farm:
         return f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n\nNessun dato disponibile."
+
+    # Ordina: prima fascia serale (19–24), poi dopo mezzanotte (00–…)
+    def _sort_key(f):
+        o = _parse_orario_turno(f)
+        if not o:
+            return (2, 0, f.get("PHAR_DESC_I") or "")
+        start, _ = o
+        blocco = 0 if start >= 18 * 60 else (1 if start <= 30 else 2)
+        return (blocco, start, f.get("PHAR_DESC_I") or "")
 
     per_comune = {}
     for f in farm:
@@ -582,18 +611,26 @@ def report_farmacie(quando="sera"):
     testo = f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n"
     for comune in sorted(per_comune.keys()):
         testo += f"\n<b>{comune}</b>\n"
-        for f in per_comune[comune]:
+        for f in sorted(per_comune[comune], key=_sort_key):
             nome = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or "Farmacia"
             indirizzo = f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or ""
             cap = f.get("GEME_ZIP") or ""
             tel = f.get("PHAR_PHONE") or ""
             note = f.get("TURN_NOTES_I") or ""
             orario = f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or ""
+            fascia = ""
+            o = _parse_orario_turno(f)
+            if o:
+                start, end = o
+                if start >= 18 * 60:
+                    fascia = " (sera, fino a mezzanotte)"
+                elif start <= 30:
+                    fascia = " (dopo mezzanotte)"
             maps = ""
             if indirizzo and comune:
                 q = requests.utils.quote(f"{indirizzo}, {cap} {comune}")
                 maps = f"https://www.google.com/maps/search/?api=1&query={q}"
-            testo += f"• <b>{nome}</b>\n  📍 {indirizzo}"
+            testo += f"• <b>{nome}</b>{fascia}\n  📍 {indirizzo}"
             if cap:
                 testo += f", {cap}"
             testo += "\n"
