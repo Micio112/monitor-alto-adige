@@ -161,29 +161,78 @@ def prendi_destinatari():
     return ids
 
 
+def _spezza_messaggio(testo, max_len=3500):
+    """Telegram accetta max 4096 caratteri: spezza su a-capo."""
+    testo = (testo or "").strip()
+    if len(testo) <= max_len:
+        return [testo] if testo else []
+    parti = []
+    while testo:
+        if len(testo) <= max_len:
+            parti.append(testo)
+            break
+        taglio = testo.rfind("\n", 0, max_len)
+        if taglio < max_len // 3:
+            taglio = max_len
+        pezzo = testo[:taglio].rstrip()
+        if pezzo:
+            parti.append(pezzo)
+        testo = testo[taglio:].lstrip()
+    return parti
+
+
 def invia_messaggio(testo):
     if not TOKEN:
         print("Token mancante")
         return False
     dest = prendi_destinatari()
     if not dest:
+        print("Nessun destinatario")
         return False
+    parti = _spezza_messaggio(testo)
+    if not parti:
+        print("Messaggio vuoto")
+        return False
+    if len(parti) > 1:
+        print(f"Messaggio spezzato in {len(parti)} parti ({len(testo)} caratteri)")
     ok = True
     for cid in dest:
-        try:
-            r = requests.post(
-                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={"chat_id": cid, "text": testo, "parse_mode": "HTML", "disable_web_page_preview": True},
-                timeout=15,
-            )
-            if not r.ok:
+        for i, pezzo in enumerate(parti):
+            try:
+                r = requests.post(
+                    f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                    data={
+                        "chat_id": cid,
+                        "text": pezzo,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                    timeout=20,
+                )
+                if not r.ok:
+                    ok = False
+                    print("Errore invio", cid, f"parte {i+1}/{len(parti)}", r.text[:300])
+                    # ritenta senza HTML se parse error
+                    if "parse" in (r.text or "").lower() or r.status_code == 400:
+                        r2 = requests.post(
+                            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                            data={
+                                "chat_id": cid,
+                                "text": pezzo.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", ""),
+                                "disable_web_page_preview": True,
+                            },
+                            timeout=20,
+                        )
+                        if r2.ok:
+                            ok = True
+                            print("Inviato (senza HTML) a", cid, f"parte {i+1}")
+                        else:
+                            print("Errore anche senza HTML", cid, r2.text[:200])
+                else:
+                    print("Inviato a", cid, f"parte {i+1}/{len(parti)}")
+            except Exception as e:
                 ok = False
-                print("Errore invio", cid, r.text[:200])
-            else:
-                print("Inviato a", cid)
-        except Exception as e:
-            ok = False
-            print("Errore", cid, e)
+                print("Errore", cid, e)
     return ok
 
 
@@ -435,17 +484,42 @@ def is_incidente(ev):
     return any(x in t for x in ("incident", "unfall", "tamponamento", "scontro"))
 
 
+def formatta_evento_viabilita_breve(ev):
+    """Versione compatta per report lunghi."""
+    strada = " ".join(filter(None, [
+        ev.get("messageStreetNr"),
+        ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt"),
+    ])) or "Evento"
+    testo = (ev.get("placeIt") or "").strip().replace("<", "").replace(">", "")
+    if len(testo) > 160:
+        testo = testo[:157] + "…"
+    dal = ev.get("beginDate") or ""
+    riga = f"• <b>{strada}</b>"
+    if dal:
+        riga += f" ({dal})"
+    if testo:
+        riga += f"\n  {testo}"
+    return riga
+
+
 def report_viabilita_mattutino():
     eventi = prendi_viabilita()
     if not eventi:
         return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
 
     chiusure = [e for e in eventi if is_chiusura(e)]
+    incidenti = [e for e in eventi if is_incidente(e)]
     testo = (
         f"🚗 <b>Report viabilità mattutino</b>\n"
         f"<i>{ora_str()}</i>\n\n"
-        f"🚫 Chiusure totali: <b>{len(chiusure)}</b> / {len(eventi)} segnalazioni\n"
+        f"🚫 Chiusure: <b>{len(chiusure)}</b> · 💥 Incidenti: <b>{len(incidenti)}</b>\n"
+        f"Segnalazioni totali: {len(eventi)}\n"
     )
+
+    if incidenti:
+        testo += "\n<b>—— Incidenti ——</b>\n"
+        for ev in incidenti[:10]:
+            testo += formatta_evento_viabilita_breve(ev) + "\n"
 
     usati = set()
     for titolo, pred in GRUPPI_VIABILITA:
@@ -460,16 +534,17 @@ def report_viabilita_mattutino():
         if not gruppo:
             continue
         testo += f"\n<b>—— {titolo} ——</b>\n"
-        for ev in gruppo[:12]:
-            testo += "\n" + formatta_evento_viabilita(ev) + "\n"
+        for ev in gruppo[:8]:
+            testo += formatta_evento_viabilita_breve(ev) + "\n"
 
     altre = [e for e in chiusure if e.get("messageId") not in usati]
     if altre:
         testo += "\n<b>—— Altre chiusure ——</b>\n"
-        for ev in altre[:8]:
-            testo += "\n" + formatta_evento_viabilita(ev) + "\n"
+        for ev in altre[:10]:
+            testo += formatta_evento_viabilita_breve(ev) + "\n"
 
     testo += "\n🔗 https://traffico.provincia.bz.it"
+    print(f"Report viabilità: {len(testo)} caratteri, {len(chiusure)} chiusure")
     return testo
 
 
@@ -721,9 +796,15 @@ if __name__ == "__main__":
         modo = (sys.argv[1] if len(sys.argv) > 1 else "check").lower().strip()
         if modo == "meteo":
             invia_meteo_giornaliero()
-        elif modo == "viabilita":
-            invia_messaggio(report_viabilita_mattutino())
-            set_daily_flag("viabilita_mattina")
+        elif modo in ("viabilita", "viabilità", "traffico"):
+            print("Modalità viabilità: generazione report...")
+            report = report_viabilita_mattutino()
+            print("Invio report viabilità...")
+            if invia_messaggio(report):
+                set_daily_flag("viabilita_mattina")
+                print("Report viabilità inviato")
+            else:
+                print("Invio report viabilità FALLITO")
         elif modo == "farmacie":
             invia_messaggio(report_farmacie("sera" if ora_roma().hour >= 15 else "mattina"))
         else:
