@@ -19,7 +19,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #f0f2f5; color: #1a1a1a; line-height: 1.5;
-      padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+      padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px));
       padding-left: env(safe-area-inset-left, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       overflow-x: hidden; min-height: 100dvh;
@@ -160,14 +160,23 @@
     .viabilita-info { font-size: 0.82rem; color: #666; margin-top: 8px; }
 
     .park-comune { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
-    .park-comune h3 { font-size: 0.95rem; color: #2b6cb0; margin-bottom: 6px; }
+    .park-comune h3 { font-size: 0.95rem; color: #2b6cb0; margin-bottom: 8px; }
     .park-item {
-      font-size: 0.86rem; color: #4a5568; padding: 6px 8px; margin-bottom: 4px;
-      background: #fff; border-radius: 8px; border: 1px solid #edf2f7;
-      display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+      font-size: 0.86rem; color: #4a5568; padding: 10px; margin-bottom: 8px;
+      background: #fff; border-radius: 10px; border: 1px solid #edf2f7;
     }
+    .park-item-top {
+      display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: flex-start;
+    }
+    .park-nome { font-weight: 600; color: #1a1a1a; }
     .park-free { font-weight: 700; color: #276749; white-space: nowrap; }
     .park-free.pieno { color: #c53030; }
+    .park-meta { font-size: 0.8rem; color: #718096; margin-top: 4px; line-height: 1.4; }
+    .park-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .park-tag {
+      font-size: 0.7rem; padding: 2px 7px; border-radius: 999px;
+      background: #edf2f7; color: #4a5568;
+    }
 
     .aed-comune { padding: 10px 12px; border-bottom: 1px solid #e2e8f0; }
     .aed-comune h3 { font-size: 0.95rem; color: #c53030; margin-bottom: 6px; }
@@ -229,6 +238,15 @@
       text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
     }
     #btn-telegram svg { width: 28px; height: 28px; fill: white; }
+    #btn-instagram {
+      position: fixed; right: max(16px, env(safe-area-inset-right, 0px));
+      bottom: calc(140px + env(safe-area-inset-bottom, 0px)); z-index: 50;
+      width: 52px; height: 52px; border-radius: 50%;
+      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      display: flex; align-items: center; justify-content: center;
+      text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
+    }
+    #btn-instagram svg { width: 26px; height: 26px; fill: white; }
     #install-bar {
       display: none; position: fixed; left: 12px; right: 12px; z-index: 60;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -309,7 +327,7 @@
 
     <section class="card" id="parcheggi">
       <h2>🅿️ Parcheggi</h2>
-      <p class="aggiornamento">Posti liberi / capacità · Open Data Hub</p>
+      <p class="aggiornamento">Caricamento…</p>
       <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
 
@@ -381,9 +399,12 @@
 
   <footer>
     <p>Dati pubblici · SABES · SIAG · Centrale Viabilità · Open Data Hub · OpenAEDMap</p>
-    <p class="credit">done by Micio</p>
+    <p class="credit">Curated by Micio</p>
   </footer>
 
+  <a id="btn-instagram" href="https://www.instagram.com/allertealtoadige/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram @allertealtoadige">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.5 6a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/></svg>
+  </a>
   <a id="btn-telegram" href="https://t.me/" target="_blank" rel="noopener" aria-label="Telegram">
     <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.2l-1.86 8.77c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.87 5.23-4.72c.23-.2-.05-.31-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.61-.6.13-.89l10.86-4.19c.5-.19.94.12.78.89z"/></svg>
   </a>
@@ -600,44 +621,112 @@
 
     async function caricaParcheggi() {
       const cont = document.querySelector(".lista-parcheggi");
+      const agg = document.querySelector("#parcheggi .aggiornamento");
       try {
         const res = await fetch("https://mobility.api.opendatahub.com/v2/flat,node/ParkingStation/*/latest?limit=2000");
         const dati = await res.json();
         const stations = {};
+        let ultimoTs = null;
         (dati.data || []).forEach(x => {
           const code = x.scode;
-          if (!stations[code]) stations[code] = { name: x.sname, meta: x.smetadata || {}, vals: {} };
+          if (!stations[code]) {
+            stations[code] = {
+              name: x.sname,
+              meta: x.smetadata || {},
+              vals: {},
+              ts: null,
+              coord: x.scoordinate || null
+            };
+          }
           stations[code].vals[x.tname] = x.mvalue;
+          const ts = x.mtransactiontime || x._timestamp;
+          if (ts) {
+            const t = new Date(ts).getTime();
+            if (!stations[code].ts || t > stations[code].ts) stations[code].ts = t;
+            if (!ultimoTs || t > ultimoTs) ultimoTs = t;
+          }
         });
         const by = {};
         Object.values(stations).forEach(s => {
           const mun = s.meta.municipality || "";
           if (!/(bolzano|bozen|merano|meran|brunico|bruneck|bressanone|brixen|vipiteno|sterzing)/i.test(mun)) return;
           let free = s.vals.free, occ = s.vals.occupied, cap = s.meta.capacity;
-          if (free == null && cap != null && occ != null) {
-            try { free = Math.max(0, Number(cap) - Number(occ)); } catch (e) {}
+          if (cap != null) {
+            const n = Number(cap);
+            if (!(n > 0) || n > 5000) cap = null;
+            else cap = n;
+          } else cap = null;
+          if (free != null) {
+            const n = Number(free);
+            if (!Number.isFinite(n) || n < 0 || n > 5000) free = null;
+            else free = n;
           }
-          if (cap != null && Number(cap) < 0) return;
-          if (free != null && Number(free) > 5000) return;
+          if (occ != null) {
+            const n = Number(occ);
+            if (!Number.isFinite(n) || n < 0 || n > 5000) occ = null;
+            else occ = n;
+          }
+          if (free == null && cap != null && occ != null) free = Math.max(0, cap - occ);
+          // salta se non c'è nulla di utile da mostrare
+          const addr = s.meta.mainaddress || s.meta.address || null;
+          const phone = s.meta.phonenumber || s.meta.phone || null;
+          const netex = s.meta.netex_parking || {};
+          const layout = netex.layout || null;
+          const charging = netex.charging === true;
+          const surveillance = netex.surveillance === true;
+          const nome = s.meta.standard_name || s.meta.name_it || s.name;
+          if (free == null && cap == null && !addr && !phone) return;
           if (!by[mun]) by[mun] = [];
-          by[mun].push({ name: s.name, free, cap });
+          by[mun].push({ name: nome, free, cap, occ, addr, phone, layout, charging, surveillance, coord: s.coord });
         });
-        const nomi = Object.keys(by).sort();
-        if (!nomi.length) { cont.innerHTML = "<p style='padding:12px'>Nessun dato parcheggi.</p>"; return; }
+        const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, "it"));
+        if (!nomi.length) {
+          cont.innerHTML = "<p style='padding:12px'>Nessun dato parcheggi disponibile.</p>";
+          agg.textContent = "Nessun aggiornamento";
+          return;
+        }
+        const layoutIt = { underground: "interrato", covered: "coperto", openSpace: "aperto", multilevel: "multipiano" };
         let html = "";
         nomi.forEach(mun => {
           html += `<div class="park-comune"><h3>${mun}</h3>`;
           by[mun].sort((a, b) => (a.name || "").localeCompare(b.name || "", "it")).forEach(p => {
-            const libero = p.free != null ? p.free : "—";
-            const tot = p.cap != null ? p.cap : "—";
-            const pieno = p.free != null && Number(p.free) <= 0;
-            html += `<div class="park-item"><span>${p.name || "Parcheggio"}</span>
-              <span class="park-free${pieno ? " pieno" : ""}">${libero} / ${tot}</span></div>`;
+            let posti = "";
+            if (p.free != null && p.cap != null) {
+              const pieno = p.free <= 0;
+              posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} liberi / ${p.cap}</span>`;
+            } else if (p.free != null) {
+              posti = `<span class="park-free">${p.free} liberi</span>`;
+            } else if (p.cap != null) {
+              posti = `<span class="park-free">${p.cap} posti</span>`;
+            }
+            let meta = [];
+            if (p.addr) meta.push("📍 " + p.addr);
+            if (p.phone) meta.push("☎ " + p.phone);
+            let tags = [];
+            if (p.layout && layoutIt[p.layout]) tags.push(layoutIt[p.layout]);
+            else if (p.layout) tags.push(p.layout);
+            if (p.charging) tags.push("ricarica EV");
+            if (p.surveillance) tags.push("videosorveglianza");
+            let maps = "";
+            if (p.coord && p.coord.y != null && p.coord.x != null) {
+              maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">mappa</a>`;
+            }
+            html += `<div class="park-item">
+              <div class="park-item-top"><span class="park-nome">${p.name || "Parcheggio"}${maps}</span>${posti}</div>
+              ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
+              ${tags.length ? `<div class="park-tags">${tags.map(t => `<span class="park-tag">${t}</span>`).join("")}</div>` : ""}
+            </div>`;
           });
           html += `</div>`;
         });
         cont.innerHTML = html;
-      } catch (e) { cont.innerHTML = "<p style='padding:12px'>Errore parcheggi.</p>"; }
+        agg.textContent = ultimoTs
+          ? "Ultimo aggiornamento dati: " + new Date(ultimoTs).toLocaleString("it-IT")
+          : "Aggiornato: " + new Date().toLocaleString("it-IT");
+      } catch (e) {
+        cont.innerHTML = "<p style='padding:12px'>Errore parcheggi.</p>";
+        agg.textContent = "Errore di caricamento";
+      }
     }
 
     async function caricaViabilita() {
