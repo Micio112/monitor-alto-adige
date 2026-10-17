@@ -57,4 +57,5 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SUBS_URL: ${{ secrets.SUBS_URL }}
           SUBS_KEY: ${{ secrets.SUBS_KEY }}
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: python notifica.py ${{ steps.mode.outputs.modo }}
