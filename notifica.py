@@ -15,6 +15,7 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 SUBS_URL = os.environ.get("SUBS_URL")
 SUBS_KEY = os.environ.get("SUBS_KEY")
+SITE_URL = (os.environ.get("SITE_URL") or "").strip().rstrip("/")
 
 TZ = ZoneInfo("Europe/Rome")
 STATE_DIR = Path(".state")
@@ -591,49 +592,53 @@ def _pubblicato_ultime_ore(ev, ore=24):
         return False
 
 
+def _chiusura_prioritaria(ev):
+    """Chiusure su A22, MEBO/SS38/SS42 o comuni principali."""
+    if not is_chiusura(ev):
+        return False
+    for _, pred in GRUPPI_VIABILITA:
+        if pred(ev):
+            return True
+    return False
+
+
 def report_viabilita_mattutino():
     eventi = prendi_viabilita()
     if not eventi:
         return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
 
-    chiusure = [e for e in eventi if is_chiusura(e)]
-    # Nuove chiusure pubblicate nelle ultime 24 ore
-    nuove_24h = [e for e in chiusure if _pubblicato_ultime_ore(e, 24)]
-    # Ordina dalle più recenti
-    def _sort_pub(e):
-        try:
-            return datetime.fromisoformat(str(e.get("publishDateTime") or "").replace("Z", "+00:00"))
-        except Exception:
-            return datetime.min.replace(tzinfo=TZ)
-
-    nuove_24h.sort(key=_sort_pub, reverse=True)
     incidenti = [e for e in eventi if is_incidente(e)]
     code = [e for e in eventi if is_coda_rallentamento(e)]
+    # Chiusure attive solo su A22, MEBO e città/valli principali
+    chiusure = [e for e in eventi if _chiusura_prioritaria(e)]
 
     testo = (
         f"🚗 <b>Report viabilità mattutino</b>\n"
         f"<i>{ora_str()}</i>\n\n"
-        f"🆕 Nuove chiusure (24h): <b>{len(nuove_24h)}</b> · "
         f"💥 Incidenti: <b>{len(incidenti)}</b> · "
-        f"🚗 Code: <b>{len(code)}</b>\n"
+        f"🚗 Code/rallentamenti: <b>{len(code)}</b> · "
+        f"🚫 Chiusure (A22/MEBO/città): <b>{len(chiusure)}</b>\n"
     )
 
     if incidenti:
         testo += "\n<b>—— Incidenti ——</b>\n"
-        for ev in incidenti[:10]:
+        for ev in incidenti[:12]:
             testo += formatta_evento_viabilita_breve(ev) + "\n"
+    else:
+        testo += "\n✅ Nessun incidente segnalato.\n"
 
     if code:
         testo += "\n<b>—— Code / rallentamenti ——</b>\n"
-        for ev in code[:10]:
+        for ev in code[:12]:
             testo += formatta_evento_viabilita_breve(ev) + "\n"
+    else:
+        testo += "\n✅ Nessuna coda/rallentamento.\n"
 
-    # Solo le nuove chiusure delle ultime 24 ore (niente elenco di tutte le chiusure attive)
-    if nuove_24h:
-        testo += "\n<b>—— Nuove chiusure (ultime 24 ore) ——</b>\n"
+    if chiusure:
+        testo += "\n<b>—— Chiusure (A22 · MEBO · città principali) ——</b>\n"
         usati = set()
         for titolo, pred in GRUPPI_VIABILITA:
-            gruppo = [e for e in nuove_24h if pred(e)]
+            gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
             if not gruppo:
                 continue
             for e in gruppo:
@@ -641,16 +646,13 @@ def report_viabilita_mattutino():
             testo += f"\n<i>{titolo}</i>\n"
             for ev in gruppo[:10]:
                 testo += formatta_evento_viabilita_breve(ev) + "\n"
-        altre = [e for e in nuove_24h if e.get("messageId") not in usati]
-        if altre:
-            testo += "\n<i>Altre</i>\n"
-            for ev in altre[:10]:
-                testo += formatta_evento_viabilita_breve(ev) + "\n"
     else:
-        testo += "\n✅ Nessuna nuova chiusura nelle ultime 24 ore.\n"
+        testo += "\n✅ Nessuna chiusura su A22/MEBO/città principali.\n"
 
     testo += "\n🔗 https://traffico.provincia.bz.it"
-    print(f"Report viabilità: {len(testo)} caratteri, nuove 24h={len(nuove_24h)}")
+    if SITE_URL:
+        testo += f"\n🌐 {SITE_URL}"
+    print(f"Report viabilità: {len(testo)} car., inc={len(incidenti)}, code={len(code)}, chius={len(chiusure)}")
     return testo
 
 
@@ -757,11 +759,12 @@ def prendi_farmacie_turno(modo="tutte"):
         if modo == "notte":
             solo = [f for f in lista if is_farmacia_notturna(f)]
             print(f"Farmacie notte: {len(solo)} (su {len(lista)} in turno)")
-            return solo if solo else lista
+            # Non fare fallback a tutte: evita di mischiare diurne e di re-inviare liste diverse
+            return solo
         if modo == "giorno":
             solo = [f for f in lista if is_farmacia_diurna(f)]
             print(f"Farmacie giorno: {len(solo)} (su {len(lista)} in turno)")
-            return solo if solo else lista
+            return solo
         return lista
     except Exception as e:
         print("Errore farmacie:", e)
@@ -769,14 +772,15 @@ def prendi_farmacie_turno(modo="tutte"):
 
 
 def report_farmacie(quando="sera"):
-    """quando: 'sera' → turno notte (sera + dopo mezzanotte); 'mattina' → diurne."""
+    """quando: 'sera' → turno notte (sera + dopo mezzanotte); 'mattina' → diurne.
+    Lista compatta: nome, orario, indirizzo. Niente telefono/note/mappa.
+    """
     modo = "notte" if quando in ("sera", "notte", "notturno") else "giorno"
-    etichetta = "turno di notte (sera + dopo mezzanotte)" if modo == "notte" else "turno di giorno"
+    etichetta = "turno di notte" if modo == "notte" else "turno di giorno"
     farm = prendi_farmacie_turno(modo)
     if not farm:
         return f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n\nNessun dato disponibile."
 
-    # Ordina: prima fascia serale (19–24), poi dopo mezzanotte (00–…)
     def _sort_key(f):
         o = _parse_orario_turno(f)
         if not o:
@@ -784,6 +788,21 @@ def report_farmacie(quando="sera"):
         start, _ = o
         blocco = 0 if start >= 18 * 60 else (1 if start <= 30 else 2)
         return (blocco, start, f.get("PHAR_DESC_I") or "")
+
+    # Deduplica per farmacia+orario (l'API a volte espone due record simili)
+    visti = set()
+    unici = []
+    for f in farm:
+        key = (
+            (f.get("PHAR_ID") or f.get("PHAR_DESC_I") or "").strip().lower(),
+            (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip(),
+            (f.get("GEME_DESC_I") or "").strip().lower(),
+        )
+        if key in visti:
+            continue
+        visti.add(key)
+        unici.append(f)
+    farm = unici
 
     per_comune = {}
     for f in farm:
@@ -795,36 +814,86 @@ def report_farmacie(quando="sera"):
         testo += f"\n<b>{comune}</b>\n"
         for f in sorted(per_comune[comune], key=_sort_key):
             nome = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or "Farmacia"
-            indirizzo = f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or ""
-            cap = f.get("GEME_ZIP") or ""
-            tel = f.get("PHAR_PHONE") or ""
-            note = f.get("TURN_NOTES_I") or ""
-            orario = f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or ""
-            fascia = ""
-            o = _parse_orario_turno(f)
-            if o:
-                start, end = o
-                if start >= 18 * 60:
-                    fascia = " (sera, fino a mezzanotte)"
-                elif start <= 30:
-                    fascia = " (dopo mezzanotte)"
-            maps = ""
-            if indirizzo and comune:
-                q = requests.utils.quote(f"{indirizzo}, {cap} {comune}")
-                maps = f"https://www.google.com/maps/search/?api=1&query={q}"
-            testo += f"• <b>{nome}</b>{fascia}\n  📍 {indirizzo}"
-            if cap:
-                testo += f", {cap}"
-            testo += "\n"
-            if tel:
-                testo += f"  📞 {tel}\n"
+            indirizzo = (f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or "").strip()
+            orario = (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
+            testo += f"• <b>{nome}</b>"
             if orario:
-                testo += f"  🕐 {orario}\n"
-            if note:
-                testo += f"  ℹ️ {note}\n"
-            if maps:
-                testo += f"  🗺 {maps}\n"
+                testo += f" · 🕐 {orario}"
+            testo += "\n"
+            if indirizzo:
+                testo += f"  📍 {indirizzo}\n"
+    if SITE_URL:
+        testo += f"\n🌐 Dettagli: {SITE_URL}"
     return testo
+
+
+
+# ========== ALLARMI PROTEZIONE CIVILE (comunicati operativi) ==========
+def prendi_allarmi_pc():
+    """Feed SIAG ufficiale usato da allerta-protezione-civile.provincia.bz.it"""
+    try:
+        r = requests.get(
+            "https://static-weather.services.siag.it/sys/BIS_Zivilschutz_I.json",
+            timeout=20,
+            headers={"User-Agent": "MonitorAltoAdige/1.0", "Accept": "application/json"},
+        )
+        raw = r.content
+        if raw[:2] == b"\xff\xfe":
+            text = raw.decode("utf-16-le")
+        elif raw[:2] == b"\xfe\xff":
+            text = raw.decode("utf-16-be")
+        else:
+            text = raw.decode("utf-8", errors="replace")
+        dati = json.loads(text.strip() or "[]")
+        if not isinstance(dati, list):
+            dati = [dati] if dati else []
+        return dati
+    except Exception as e:
+        print("Errore allarmi PC:", e)
+        return []
+
+
+def controlla_allarmi_pc():
+    """Una notifica per comunicato attivo (ARTC_STATUS == 16)."""
+    out = []
+    for a in prendi_allarmi_pc():
+        try:
+            status = int(a.get("ARTC_STATUS") or 0)
+        except Exception:
+            status = 0
+        if status != 16:
+            continue
+        aid = str(a.get("ARTC_ID") or "")
+        if not aid:
+            aid = hashlib.md5(
+                (str(a.get("ARTC_TITLE") or "") + str(a.get("ARTC_DATE") or "")).encode()
+            ).hexdigest()[:12]
+        key = f"pc-allarme-{aid}"
+        if already_sent(key, ttl_hours=48):
+            continue
+        titolo = (a.get("ARTC_TITLE") or "Comunicato di Protezione Civile").strip()
+        # strip HTML grezzo
+        import re
+        titolo = re.sub(r"<[^>]+>", "", titolo)
+        sub = re.sub(r"<[^>]+>", "", (a.get("ARTC_SUBTITLE") or "")).strip()
+        testo = re.sub(r"<[^>]+>", "", (a.get("ARTC_LCONTENT") or "")).strip()
+        if len(testo) > 900:
+            testo = testo[:897] + "…"
+        data = (a.get("ARTC_DATE") or "").replace("T00:00:00", "").replace(" 00:00:00", "")
+        ora = a.get("ARTC_TIME") or ""
+        quando = " ".join(x for x in (format_data_it(data) if data else data, ora) if x)
+        blocco = "🆘 <b>Allarme di Protezione Civile</b>\n"
+        if quando:
+            blocco += f"🕒 {quando}\n"
+        blocco += f"<b>{titolo}</b>\n"
+        if sub:
+            blocco += f"{sub}\n"
+        if testo:
+            blocco += f"\n{testo}\n"
+        blocco += "\n🔗 https://allerta-protezione-civile.provincia.bz.it/it/home"
+        out.append(blocco)
+        print(f"Allarme PC nuovo: {titolo[:60]}")
+    return out
 
 
 # ========== MAIN ==========
@@ -835,6 +904,7 @@ def controlla_emergenze():
     messaggi.extend(prendi_allerte_nazionali())
     messaggi.extend(controlla_temporali())
     messaggi.extend(nuove_chiusure_e_incidenti())
+    messaggi.extend(controlla_allarmi_pc())
 
     if messaggi:
         testo = f"🔔 <b>Monitor Alto Adige</b>\n<i>{ora_str()}</i>\n\n"
@@ -874,12 +944,14 @@ def controlla_emergenze():
                 invia_messaggio(t)
                 set_daily_flag("meteo_sera")
 
-    # Farmacie SERA: ogni giorno 19:30–21:30 → solo turno di NOTTE
-    if (h == 19 and m >= 30) or h == 20 or (h == 21 and m < 30):
+    # Farmacie SERA: ogni giorno 19:30–21:00 → solo turno di NOTTE (una volta/giorno)
+    if (h == 19 and m >= 30) or h == 20:
         if not has_daily_flag("farm_sera"):
             print("Invio farmacie notturne...")
-            invia_messaggio(report_farmacie("sera"))
-            set_daily_flag("farm_sera")
+            set_daily_flag("farm_sera")  # marca subito per evitare doppio invio se il job si sovrappone
+            ok = invia_messaggio(report_farmacie("sera"))
+            if not ok:
+                print("Invio farmacie FALLITO (flag già impostato per oggi)")
 
     # Farmacie MATTINA: solo weekend/festivi 7:30–10:00 → solo turno di GIORNO
     if is_weekend_or_holiday():
