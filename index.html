@@ -97,7 +97,7 @@
     .meteo-icona { width: 52px; height: 52px; object-fit: contain; flex-shrink: 0; }
     .meteo-temp { font-size: 1.25rem; font-weight: 700; }
     .meteo-testo { font-size: 0.86rem; color: #4a5568; margin-top: 4px; }
-    .meteo-mappa { width: 100%; border-radius: 10px; margin-top: 10px; border: 1px solid #e2e8f0; max-height: 180px; object-fit: cover; }
+    .meteo-mappa { width: 100%; height: auto; border-radius: 10px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; display: block; background: #f7fafc; }
     .settimana {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;
     }
@@ -113,6 +113,21 @@
     @media (min-width: 560px) { .radar-wrap { height: 260px; } }
     .radar-wrap iframe { width: 100%; height: 100%; border: 0; }
     .link-ext { display: inline-block; margin-top: 8px; font-size: 0.88rem; color: #2b6cb0; }
+
+    .pc-ok {
+      background: #e6fffa; border: 1px solid #b2f5ea; color: #234e52;
+      border-radius: 12px; padding: 16px; text-align: center; font-weight: 600;
+    }
+    .pc-alert {
+      background: #fff5f5; border: 1px solid #feb2b2; border-radius: 12px;
+      padding: 14px 16px; color: #742a2a;
+    }
+    .pc-alert .pc-data { font-size: 0.85rem; color: #9b2c2c; margin-bottom: 6px; }
+    .pc-alert h3 { font-size: 1.05rem; color: #c53030; margin: 0 0 8px; line-height: 1.3; }
+    .pc-alert .pc-sub { font-size: 0.92rem; font-weight: 600; margin-bottom: 8px; }
+    .pc-alert .pc-testo { font-size: 0.9rem; line-height: 1.45; white-space: pre-wrap; }
+    .farmacia .btn-chiama { margin-top: 8px; display: inline-flex; }
+
 
     .ospedale {
       border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 10px;
@@ -299,7 +314,7 @@
         <span class="heart">♥</span><span>I NEED<br>AN AED</span>
       </a>
       <div class="logo-title">
-        <img class="site-logo" src="icon-192.jpg" width="44" height="44" alt="Logo Monitor Alto Adige">
+        <img class="site-logo" src="icon-192.png" width="44" height="44" alt="Logo Monitor Alto Adige">
         <h1>Monitor Alto Adige</h1>
       </div>
     </div>
@@ -309,9 +324,10 @@
       <a href="#farmacie">Farmacie (Notte-Weekend-Festivi)</a>
       <a href="#parcheggi">Parcheggi</a>
       <a href="#viabilita">Viabilità</a>
-      <a href="#allerte">Allerte</a>
-      <a href="#numeri-utili">Numeri utili</a>
+      <a href="#allerte">Allerte meteo</a>
+      <a href="#allarmi-pc">Allarmi PC</a>
       <a href="#aed">AED</a>
+      <a href="#numeri-utili">Numeri utili</a>
       <a href="#contatti">Contatti</a>
     </nav>
   </header>
@@ -360,9 +376,24 @@
     </section>
 
     <section class="card" id="allerte">
-      <h2>🚨 Allerte Protezione Civile</h2>
+      <h2>🚨 Allerte meteo</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-allerte"><p>Attendere…</p></div>
+    </section>
+
+    <section class="card" id="allarmi-pc">
+      <h2>🆘 Allarmi di Protezione Civile</h2>
+      <p class="aggiornamento">Comunicati operativi provincia</p>
+      <div class="lista-allarmi-pc"><p>Attendere…</p></div>
+      <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Portale ufficiale →</a>
+    </section>
+
+
+    <section class="card" id="aed">
+      <h2>❤️ Defibrillatori pubblici (AED)</h2>
+      <p class="aggiornamento">Elenco per comune</p>
+      <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
+      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
     </section>
 
     <section class="card" id="numeri-utili">
@@ -407,13 +438,6 @@
           <a class="btn-chiama" href="tel:800310650">☎ Chiama 800 310 650</a>
         </div>
       </div>
-    </section>
-
-    <section class="card" id="aed">
-      <h2>❤️ Defibrillatori pubblici (AED)</h2>
-      <p class="aggiornamento">Elenco per comune</p>
-      <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
-      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
     </section>
 
     <section class="card" id="contatti">
@@ -534,6 +558,7 @@
       aggiornaBanner([
         ...(window.__criticitaPS || []),
         ...(window.__criticitaAllerte || []),
+        ...(window.__criticitaPC || []),
         ...(window.__criticitaInc || [])
       ]);
     }
@@ -648,10 +673,13 @@
         let html = "";
         lista.forEach(f => {
           const nome = f.PHAR_DESC_I || f.PHAR_DESC_D || "Farmacia";
+          const tel = (f.PHAR_PHONE || "").toString().trim();
+          const telHref = tel ? ("tel:" + tel.replace(/[^\d+]/g, "")) : "";
           html += `<div class="farmacia"><div class="farmacia-nome">${nome}</div>
-            <div class="farmacia-meta">${f.GEME_DESC_I || ""}${f.PHAR_ADRESS_I ? " · " + f.PHAR_ADRESS_I : ""}${f.PHAR_PHONE ? " · ☎ " + f.PHAR_PHONE : ""}</div>
+            <div class="farmacia-meta">${f.GEME_DESC_I || ""}${f.PHAR_ADRESS_I ? " · " + f.PHAR_ADRESS_I : ""}</div>
             ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE ? `<div class="farmacia-meta">🕐 ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE}</div>` : ""}
-            ${f.TURN_NOTES_I ? `<div class="farmacia-meta">${f.TURN_NOTES_I}</div>` : ""}</div>`;
+            ${f.TURN_NOTES_I ? `<div class="farmacia-meta">${f.TURN_NOTES_I}</div>` : ""}
+            ${telHref ? `<a class="btn-chiama" href="${telHref}">☎ Chiama ${tel}</a>` : ""}</div>`;
         });
         cont.innerHTML = html;
       } catch (e) { cont.innerHTML = "<p>Errore farmacie.</p>"; }
@@ -813,6 +841,66 @@
       } catch (e) { cont.innerHTML = "<p style='padding:12px'>Errore viabilità.</p>"; }
     }
 
+
+    async function caricaAllarmiPC() {
+      const cont = document.querySelector(".lista-allarmi-pc");
+      const agg = document.querySelector("#allarmi-pc .aggiornamento");
+      try {
+        const res = await fetch("https://static-weather.services.siag.it/sys/BIS_Zivilschutz_I.json?_=" + Date.now());
+        const buf = await res.arrayBuffer();
+        let text;
+        const u8 = new Uint8Array(buf);
+        if (u8[0] === 0xFF && u8[1] === 0xFE) {
+          text = new TextDecoder("utf-16le").decode(buf);
+        } else if (u8[0] === 0xFE && u8[1] === 0xFF) {
+          text = new TextDecoder("utf-16be").decode(buf);
+        } else {
+          text = new TextDecoder("utf-8").decode(buf);
+        }
+        let dati = JSON.parse(text.trim() || "[]");
+        if (!Array.isArray(dati)) dati = dati ? [dati] : [];
+        // status 16 = avviso attivo (come sul sito ufficiale)
+        const attivi = dati.filter(a => Number(a.ARTC_STATUS) === 16 || Number(a.ARTC_STATUS) === 16);
+        const lista = attivi.length ? attivi : dati.filter(a => a && (a.ARTC_TITLE || a.ARTC_LCONTENT));
+        if (!lista.length) {
+          cont.innerHTML = `<div class="pc-ok">Al momento non c'è alcun avviso di protezione civile.</div>`;
+          agg.textContent = "Nessun avviso · " + new Date().toLocaleString("it-IT");
+          window.__criticitaPC = [];
+          mergeBanner();
+          return;
+        }
+        const strip = (html) => {
+          const d = document.createElement("div");
+          d.innerHTML = html || "";
+          return (d.textContent || d.innerText || "").trim();
+        };
+        let html = "";
+        const criticita = [];
+        lista.forEach(a => {
+          const titolo = strip(a.ARTC_TITLE) || "Comunicato di Protezione Civile";
+          const sub = strip(a.ARTC_SUBTITLE);
+          const testo = strip(a.ARTC_LCONTENT);
+          const data = (a.ARTC_DATE || "").replace("T00:00", "").replace(" 00:00:00", "");
+          const ora = a.ARTC_TIME || "";
+          const quando = [data, ora].filter(Boolean).join(", ");
+          criticita.push("Allarme PC: " + titolo.slice(0, 60));
+          html += `<div class="pc-alert">
+            ${quando ? `<div class="pc-data">🕒 ${quando}</div>` : ""}
+            <h3>${titolo}</h3>
+            ${sub ? `<div class="pc-sub">${sub}</div>` : ""}
+            ${testo ? `<div class="pc-testo">${testo}</div>` : ""}
+            <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Leggi sul sito ufficiale →</a>
+          </div>`;
+        });
+        cont.innerHTML = html;
+        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+        window.__criticitaPC = criticita;
+        mergeBanner();
+      } catch (e) {
+        cont.innerHTML = `<p>Errore caricamento. <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Apri portale ufficiale →</a></p>`;
+      }
+    }
+
     async function caricaAllerte() {
       const cont = document.querySelector(".lista-allerte");
       const agg = document.querySelector("#allerte .aggiornamento");
@@ -880,7 +968,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
-      caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAED();
+      caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
     });
   </script>
 </body>
