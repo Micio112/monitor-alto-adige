@@ -76,6 +76,37 @@ def nome_giorno(iso_date):
         return str(iso_date)[:10]
 
 
+def format_data_it(val):
+    """Converte date ISO / varie in gg/mm/aaaa (opz. con ora se presente)."""
+    if not val:
+        return ""
+    s = str(val).strip()
+    if not s:
+        return ""
+    # già in formato italiano tipo 17/10/2026
+    if len(s) >= 10 and s[2] == "/" and s[5] == "/":
+        return s[:16] if len(s) > 10 else s[:10]
+    try:
+        raw = s.replace("Z", "+00:00")
+        if "T" in raw or "+" in raw[10:] or raw.endswith("Z"):
+            dt = datetime.fromisoformat(raw[:25] if len(raw) > 25 else raw)
+        else:
+            # 2026-10-17 o 2026-10-17 08:00
+            dt = datetime.fromisoformat(raw[:19].replace(" ", "T"))
+        if dt.hour or dt.minute or "T" in s or " " in s[10:]:
+            return dt.strftime("%d/%m/%Y %H:%M")
+        return dt.strftime("%d/%m/%Y")
+    except Exception:
+        # prova solo data YYYY-MM-DD
+        try:
+            if len(s) >= 10 and s[4] == "-" and s[7] == "-":
+                y, m, d = s[:10].split("-")
+                return f"{d}/{m}/{y}"
+        except Exception:
+            pass
+        return s
+
+
 def is_weekend_or_holiday():
     d = ora_roma().date()
     if d.weekday() >= 5:
@@ -400,13 +431,28 @@ def formatta_stazioni(station_data):
     return "\n".join(righe)
 
 
-def prendi_bollettino_meteo():
+def prendi_bollettino_meteo(quando="mattina"):
+    """quando='mattina' → oggi + prognosi giorni; quando='sera' → solo domani."""
     try:
         dati = requests.get(
             "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it", timeout=15
         ).json()
         oggi = dati.get("today", {})
         domani = dati.get("tomorrow", {})
+
+        if quando in ("sera", "domani", "evening"):
+            testo = (
+                f"🌙 <b>Meteo di domani – Alto Adige</b>\n"
+                f"<i>{ora_str()}</i>\n\n"
+                f"<b>{domani.get('title', 'Domani')}</b>\n"
+                f"{domani.get('weather', '')}\n{domani.get('temperatures', '')}\n"
+            )
+            if domani.get("stationData"):
+                testo += "\n📍 <b>Comuni</b>\n" + formatta_stazioni(domani["stationData"]) + "\n"
+            testo += "\n🔗 https://meteo.provincia.bz.it"
+            return testo
+
+        # Mattina: solo oggi + prognostico prossimi giorni (niente blocco "domani" completo)
         testo = (
             f"🌤 <b>Bollettino Meteo Alto Adige</b>\n"
             f"<i>{ora_str()}</i>\n\n"
@@ -415,22 +461,19 @@ def prendi_bollettino_meteo():
         )
         if oggi.get("stationData"):
             testo += "\n📍 <b>Comuni (oggi)</b>\n" + formatta_stazioni(oggi["stationData"]) + "\n"
-        if domani:
-            testo += (
-                f"\n<b>Domani – {domani.get('title', '—')}</b>\n"
-                f"{domani.get('weather', '')}\n{domani.get('temperatures', '')}\n"
-            )
-            if domani.get("stationData"):
-                testo += "\n📍 <b>Comuni (domani)</b>\n" + formatta_stazioni(domani["stationData"]) + "\n"
         forecasts = dati.get("dayForecasts") or []
         if forecasts:
-            testo += "\n<b>Prossimi giorni</b>\n"
+            testo += "\n<b>Prognosi prossimi giorni</b>\n"
             for g in forecasts:
                 giorno = nome_giorno(g.get("date"))
+                data_fmt = format_data_it(g.get("date"))
+                etichetta = giorno if giorno != "—" else data_fmt
+                if data_fmt and data_fmt not in etichetta:
+                    etichetta = f"{giorno} {data_fmt}".strip()
                 desc = (g.get("symbol") or {}).get("description", "—")
                 tmax, tmin = g.get("tempMax") or {}, g.get("tempMin") or {}
                 testo += (
-                    f"• <b>{giorno}</b>: {desc} "
+                    f"• <b>{etichetta}</b>: {desc} "
                     f"(max {tmax.get('min', '?')}–{tmax.get('max', '?')}° / "
                     f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)\n"
                 )
@@ -461,27 +504,58 @@ def formatta_evento_viabilita(ev):
     zona = ev.get("messageZoneDescIt") or ""
     grad = ev.get("messageGradDescIt") or ""
     testo = (ev.get("placeIt") or ev.get("descriptionIt") or "").strip()
-    dal, al = ev.get("beginDate") or "", ev.get("endDate") or ""
-    tipo = ev.get("subTycodeValue") or ""
+    dal = format_data_it(ev.get("beginDate") or "")
+    al = format_data_it(ev.get("endDate") or "")
+    tipo = (ev.get("subTycodeValue") or "").upper()
     emoji = "🚧" if tipo == "BAUSTELLE" else ("🚫" if tipo == "SPERRE" else "⚠️")
-    if "incident" in testo.lower() or "unfall" in (ev.get("placeDe") or "").lower():
+    if tipo == "STAU" or is_coda_rallentamento(ev):
+        emoji = "🚗"
+    if is_incidente(ev):
         emoji = "💥"
+    periodo = ""
+    if dal and al:
+        periodo = f"Dal {dal} al {al}"
+    elif dal:
+        periodo = f"Dal {dal}"
+    elif al:
+        periodo = f"Fino al {al}"
     righe = [
         f"{emoji} <b>{strada or 'Evento'}</b>",
         f"{grad}" + (f" · {zona}" if zona else ""),
-        f"Dal {dal}" + (f" al {al}" if al else ""),
+        periodo,
         testo[:350] + ("…" if len(testo) > 350 else ""),
     ]
     return "\n".join(r for r in righe if r)
 
 
 def is_chiusura(ev):
-    return (ev.get("subTycodeValue") or "") == "SPERRE"
+    return (ev.get("subTycodeValue") or "").upper() == "SPERRE"
 
 
 def is_incidente(ev):
     t = ((ev.get("placeIt") or "") + " " + (ev.get("placeDe") or "") + " " + (ev.get("subTycodeValue") or "")).lower()
     return any(x in t for x in ("incident", "unfall", "tamponamento", "scontro"))
+
+
+def is_coda_rallentamento(ev):
+    """Code, STAU, traffico intenso / rallentato dalla Centrale Viabilità."""
+    sub = (ev.get("subTycodeValue") or "").upper()
+    if sub == "STAU":
+        return True
+    t = " ".join([
+        str(ev.get("placeIt") or ""),
+        str(ev.get("placeDe") or ""),
+        str(ev.get("descriptionIt") or ""),
+        str(ev.get("descriptionDe") or ""),
+        str(ev.get("subTycodeIt") or ""),
+        str(ev.get("tycodeIt") or ""),
+    ]).lower()
+    keywords = (
+        "coda", "code ", "stau", "rallentament", "rallentato", "traffico intenso",
+        "stockung", "stockungen", "verkehrsbehinderung", "lento scorrimento",
+        "traffico rallentato", "mezzi pesanti in coda",
+    )
+    return any(k in t for k in keywords)
 
 
 def formatta_evento_viabilita_breve(ev):
@@ -493,7 +567,7 @@ def formatta_evento_viabilita_breve(ev):
     testo = (ev.get("placeIt") or "").strip().replace("<", "").replace(">", "")
     if len(testo) > 160:
         testo = testo[:157] + "…"
-    dal = ev.get("beginDate") or ""
+    dal = format_data_it(ev.get("beginDate") or "")
     riga = f"• <b>{strada}</b>"
     if dal:
         riga += f" ({dal})"
@@ -519,6 +593,12 @@ def report_viabilita_mattutino():
     if incidenti:
         testo += "\n<b>—— Incidenti ——</b>\n"
         for ev in incidenti[:10]:
+            testo += formatta_evento_viabilita_breve(ev) + "\n"
+
+    code = [e for e in eventi if is_coda_rallentamento(e)]
+    if code:
+        testo += "\n<b>—— Code / rallentamenti ——</b>\n"
+        for ev in code[:10]:
             testo += formatta_evento_viabilita_breve(ev) + "\n"
 
     usati = set()
@@ -572,6 +652,11 @@ def nuove_chiusure_e_incidenti():
             if already_sent(key, ttl_hours=12):
                 continue
             out.append("💥 <b>Incidente stradale</b>\n" + formatta_evento_viabilita(ev))
+        elif is_coda_rallentamento(ev):
+            key = f"coda-{mid}"
+            if already_sent(key, ttl_hours=6):
+                continue
+            out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
         elif is_chiusura(ev):
             key = f"chiusura-{mid}"
             if already_sent(key, ttl_hours=12):
@@ -749,22 +834,23 @@ def controlla_emergenze():
         else:
             print("Report viabilità già inviato oggi")
 
-    # Meteo mattina 7:00–10:00
+    # Meteo MATTINA 7:00–10:00 → solo oggi + prognosi
     if 7 <= h < 10:
         if not has_daily_flag("meteo_mattina"):
-            print("Invio bollettino meteo (fascia mattina)...")
-            t = prendi_bollettino_meteo()
+            print("Invio meteo mattina (oggi + prognosi)...")
+            t = prendi_bollettino_meteo("mattina")
             if t:
                 invia_messaggio(t)
                 set_daily_flag("meteo_mattina")
 
-    # Meteo secondo slot ~10–12
-    if 10 <= h < 12:
-        if not has_daily_flag("meteo_tarda_mattina"):
-            t = prendi_bollettino_meteo()
+    # Meteo SERA 18:00–21:00 → solo domani
+    if 18 <= h < 21:
+        if not has_daily_flag("meteo_sera"):
+            print("Invio meteo sera (solo domani)...")
+            t = prendi_bollettino_meteo("sera")
             if t:
                 invia_messaggio(t)
-                set_daily_flag("meteo_tarda_mattina")
+                set_daily_flag("meteo_sera")
 
     # Farmacie SERA: ogni giorno 19:30–21:30 → solo turno di NOTTE
     if (h == 19 and m >= 30) or h == 20 or (h == 21 and m < 30):
@@ -782,13 +868,13 @@ def controlla_emergenze():
                 set_daily_flag("farm_mattina")
 
 
-def invia_meteo_giornaliero():
-    if has_daily_flag("meteo_manual"):
-        print("Meteo già inviato oggi (flag)")
-    t = prendi_bollettino_meteo()
+def invia_meteo_giornaliero(quando=None):
+    if quando is None:
+        quando = "sera" if ora_roma().hour >= 15 else "mattina"
+    t = prendi_bollettino_meteo(quando)
     if t:
         invia_messaggio(t)
-        set_daily_flag("meteo_manual")
+        set_daily_flag("meteo_sera" if quando == "sera" else "meteo_mattina")
 
 
 if __name__ == "__main__":
@@ -796,6 +882,10 @@ if __name__ == "__main__":
         modo = (sys.argv[1] if len(sys.argv) > 1 else "check").lower().strip()
         if modo == "meteo":
             invia_meteo_giornaliero()
+        elif modo in ("meteo_sera", "meteo-sera"):
+            invia_meteo_giornaliero("sera")
+        elif modo in ("meteo_mattina", "meteo-mattina"):
+            invia_meteo_giornaliero("mattina")
         elif modo in ("viabilita", "viabilità", "traffico"):
             print("Modalità viabilità: generazione report...")
             report = report_viabilita_mattutino()
