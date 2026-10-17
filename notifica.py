@@ -576,18 +576,46 @@ def formatta_evento_viabilita_breve(ev):
     return riga
 
 
+def _pubblicato_ultime_ore(ev, ore=24):
+    """True se publishDateTime è nelle ultime `ore` ore."""
+    pub = ev.get("publishDateTime")
+    if not pub:
+        return False
+    try:
+        dt = datetime.fromisoformat(str(pub).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ)
+        delta = (ora_roma() - dt.astimezone(TZ)).total_seconds()
+        return 0 <= delta <= ore * 3600
+    except Exception:
+        return False
+
+
 def report_viabilita_mattutino():
     eventi = prendi_viabilita()
     if not eventi:
         return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
 
     chiusure = [e for e in eventi if is_chiusura(e)]
+    # Nuove chiusure pubblicate nelle ultime 24 ore
+    nuove_24h = [e for e in chiusure if _pubblicato_ultime_ore(e, 24)]
+    # Ordina dalle più recenti
+    def _sort_pub(e):
+        try:
+            return datetime.fromisoformat(str(e.get("publishDateTime") or "").replace("Z", "+00:00"))
+        except Exception:
+            return datetime.min.replace(tzinfo=TZ)
+
+    nuove_24h.sort(key=_sort_pub, reverse=True)
     incidenti = [e for e in eventi if is_incidente(e)]
+    code = [e for e in eventi if is_coda_rallentamento(e)]
+
     testo = (
         f"🚗 <b>Report viabilità mattutino</b>\n"
         f"<i>{ora_str()}</i>\n\n"
-        f"🚫 Chiusure: <b>{len(chiusure)}</b> · 💥 Incidenti: <b>{len(incidenti)}</b>\n"
-        f"Segnalazioni totali: {len(eventi)}\n"
+        f"🆕 Nuove chiusure (24h): <b>{len(nuove_24h)}</b> · "
+        f"💥 Incidenti: <b>{len(incidenti)}</b> · "
+        f"🚗 Code: <b>{len(code)}</b>\n"
     )
 
     if incidenti:
@@ -595,36 +623,34 @@ def report_viabilita_mattutino():
         for ev in incidenti[:10]:
             testo += formatta_evento_viabilita_breve(ev) + "\n"
 
-    code = [e for e in eventi if is_coda_rallentamento(e)]
     if code:
         testo += "\n<b>—— Code / rallentamenti ——</b>\n"
         for ev in code[:10]:
             testo += formatta_evento_viabilita_breve(ev) + "\n"
 
-    usati = set()
-    for titolo, pred in GRUPPI_VIABILITA:
-        gruppo = []
-        for e in chiusure:
-            mid = e.get("messageId")
-            if mid in usati:
+    # Solo le nuove chiusure delle ultime 24 ore (niente elenco di tutte le chiusure attive)
+    if nuove_24h:
+        testo += "\n<b>—— Nuove chiusure (ultime 24 ore) ——</b>\n"
+        usati = set()
+        for titolo, pred in GRUPPI_VIABILITA:
+            gruppo = [e for e in nuove_24h if pred(e)]
+            if not gruppo:
                 continue
-            if pred(e):
-                gruppo.append(e)
-                usati.add(mid)
-        if not gruppo:
-            continue
-        testo += f"\n<b>—— {titolo} ——</b>\n"
-        for ev in gruppo[:8]:
-            testo += formatta_evento_viabilita_breve(ev) + "\n"
-
-    altre = [e for e in chiusure if e.get("messageId") not in usati]
-    if altre:
-        testo += "\n<b>—— Altre chiusure ——</b>\n"
-        for ev in altre[:10]:
-            testo += formatta_evento_viabilita_breve(ev) + "\n"
+            for e in gruppo:
+                usati.add(e.get("messageId"))
+            testo += f"\n<i>{titolo}</i>\n"
+            for ev in gruppo[:10]:
+                testo += formatta_evento_viabilita_breve(ev) + "\n"
+        altre = [e for e in nuove_24h if e.get("messageId") not in usati]
+        if altre:
+            testo += "\n<i>Altre</i>\n"
+            for ev in altre[:10]:
+                testo += formatta_evento_viabilita_breve(ev) + "\n"
+    else:
+        testo += "\n✅ Nessuna nuova chiusura nelle ultime 24 ore.\n"
 
     testo += "\n🔗 https://traffico.provincia.bz.it"
-    print(f"Report viabilità: {len(testo)} caratteri, {len(chiusure)} chiusure")
+    print(f"Report viabilità: {len(testo)} caratteri, nuove 24h={len(nuove_24h)}")
     return testo
 
 
@@ -647,6 +673,7 @@ def nuove_chiusure_e_incidenti():
             continue
 
         mid = str(ev.get("messageId") or "")
+        # Solo incidenti e code/rallentamenti (niente push per nuove chiusure)
         if is_incidente(ev):
             key = f"incidente-{mid}"
             if already_sent(key, ttl_hours=12):
@@ -657,11 +684,6 @@ def nuove_chiusure_e_incidenti():
             if already_sent(key, ttl_hours=6):
                 continue
             out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
-        elif is_chiusura(ev):
-            key = f"chiusura-{mid}"
-            if already_sent(key, ttl_hours=12):
-                continue
-            out.append("🚫 <b>Nuova chiusura</b>\n" + formatta_evento_viabilita(ev))
     return out
 
 
