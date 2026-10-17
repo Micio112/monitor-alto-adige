@@ -11,8 +11,8 @@
   <meta name="description" content="Monitor Alto Adige – Pronto Soccorso, allerte, meteo, viabilità, farmacie e AED">
   <title>Monitor Alto Adige</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" type="image/png" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/jpg" href="icon-192.jpg">
+  <link rel="apple-touch-icon" href="icon-192.jpg">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
@@ -41,7 +41,16 @@
       display: flex; align-items: center; justify-content: flex-start;
       max-width: 960px; margin: 0 auto 6px; gap: 10px;
     }
-    header .logo-title { flex: 1; text-align: center; }
+    header .logo-title {
+      flex: 1; text-align: center;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    header .site-logo {
+      width: 44px; height: 44px; border-radius: 10px;
+      object-fit: cover; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.35);
+    }
     header h1 { font-size: 1.45rem; margin-bottom: 0; }
     .btn-aed {
       display: inline-flex; align-items: center; justify-content: center; gap: 5px;
@@ -153,6 +162,7 @@
     }
     .evento.chiusura { border-left-color: #e53e3e; background: #fff5f5; }
     .evento.incidente { border-left-color: #9b2c2c; background: #fff5f5; }
+    .evento.coda { border-left-color: #3182ce; background: #ebf8ff; }
     .evento.baustelle { border-left-color: #d69e2e; background: #fffff0; }
     .evento-titolo { font-weight: 600; font-size: 0.92rem; }
     .evento-meta { font-size: 0.78rem; color: #718096; margin: 2px 0; }
@@ -216,6 +226,11 @@
       position: absolute; top: 8px; right: 10px; border: 0; background: transparent;
       font-size: 1.2rem; cursor: pointer; color: #4a5568; width: 32px; height: 32px;
     }
+    .contatti-box {
+      background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 12px; font-size: 0.9rem; color: #4a5568;
+    }
+    .contatti-box a { color: #2b6cb0; font-weight: 600; word-break: break-all; }
     footer {
       text-align: center; padding: 20px 16px 28px; font-size: 0.8rem; color: #777;
     }
@@ -262,7 +277,8 @@
     #install-bar .install-yes { background: #48bb78; color: #fff; }
     #install-bar .install-no { background: transparent; color: #cbd5e0; }
     @media (max-width: 600px) {
-      header h1 { font-size: 1.2rem; }
+      header h1 { font-size: 1.15rem; }
+      header .site-logo { width: 38px; height: 38px; }
       nav.quick a { font-size: 0.68rem; padding: 7px 9px; }
       .btn-aed { font-size: 0.6rem; max-width: 80px; min-height: 44px; }
       .scroll-box { max-height: 280px; }
@@ -282,7 +298,10 @@
       <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">
         <span class="heart">♥</span><span>I NEED<br>AN AED</span>
       </a>
-      <div class="logo-title"><h1>Monitor Alto Adige</h1></div>
+      <div class="logo-title">
+        <img class="site-logo" src="icon-192.jpg" width="44" height="44" alt="Logo Monitor Alto Adige">
+        <h1>Monitor Alto Adige</h1>
+      </div>
     </div>
     <nav class="quick" aria-label="Sezioni">
       <a href="#meteo">Meteo</a>
@@ -293,6 +312,7 @@
       <a href="#allerte">Allerte</a>
       <a href="#numeri-utili">Numeri utili</a>
       <a href="#aed">AED</a>
+      <a href="#contatti">Contatti</a>
     </nav>
   </header>
 
@@ -395,6 +415,15 @@
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
       <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
     </section>
+
+    <section class="card" id="contatti">
+      <h2>✉️ Contatti</h2>
+      <p class="aggiornamento">Segnalazioni bug · impressum · suggerimenti</p>
+      <div class="contatti-box">
+        Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br>
+        <a href="mailto:monitor.altoadige@gmail.com">monitor.altoadige@gmail.com</a>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -416,7 +445,7 @@
   </div>
 
   <script>
-    const TELEGRAM_BOT = "Micioalertbot"; // es. "MonitorAltoAdigeBot"
+    const TELEGRAM_BOT = "Micioalertbot";
     if (TELEGRAM_BOT) document.getElementById("btn-telegram").href = "https://t.me/" + TELEGRAM_BOT;
 
     const COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"];
@@ -485,6 +514,15 @@
     function isIncidente(ev) {
       const t = ((ev.placeIt || "") + " " + (ev.placeDe || "") + " " + (ev.subTycodeValue || "")).toLowerCase();
       return /incident|unfall|tamponamento|scontro/.test(t);
+    }
+    function isCoda(ev) {
+      const sub = (ev.subTycodeValue || "").toUpperCase();
+      if (sub === "STAU") return true;
+      const t = [
+        ev.placeIt, ev.placeDe, ev.descriptionIt, ev.descriptionDe,
+        ev.subTycodeIt, ev.tycodeIt
+      ].join(" ").toLowerCase();
+      return /coda|code |stau|rallentament|rallentato|traffico intenso|stockung|lento scorrimento|traffico rallentato|mezzi pesanti in coda/.test(t);
     }
     function aggiornaBanner(items) {
       const el = document.getElementById("banner-criticita");
@@ -738,26 +776,36 @@
         const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
         const dati = await res.json();
         if (!Array.isArray(dati) || !dati.length) { cont.innerHTML = "<p style='padding:12px'>Nessun evento.</p>"; return; }
-        const sorted = [...dati].sort((a, b) => {
-          const ia = isIncidente(a) ? 0 : (a.subTycodeValue === "SPERRE" ? 1 : 2);
-          const ib = isIncidente(b) ? 0 : (b.subTycodeValue === "SPERRE" ? 1 : 2);
-          return ia - ib;
-        });
-        let html = "", nInc = 0;
+        function priorita(ev) {
+          if (isIncidente(ev)) return 0;
+          if (isCoda(ev)) return 1;
+          if ((ev.subTycodeValue || "") === "SPERRE") return 2;
+          if ((ev.subTycodeValue || "") === "BAUSTELLE") return 3;
+          return 4;
+        }
+        const sorted = [...dati].sort((a, b) => priorita(a) - priorita(b));
+        let html = "", nInc = 0, nCoda = 0;
         sorted.forEach(ev => {
           const tipo = ev.subTycodeValue || "";
           const inc = isIncidente(ev);
+          const coda = !inc && isCoda(ev);
           if (inc) { nInc++; criticita.push("Incidente"); }
-          const cls = inc ? "incidente" : (tipo === "SPERRE" ? "chiusura" : (tipo === "BAUSTELLE" ? "baustelle" : ""));
+          if (coda) nCoda++;
+          let cls = "";
+          let pref = "";
+          if (inc) { cls = "incidente"; pref = "💥 "; }
+          else if (coda) { cls = "coda"; pref = "🚗 "; }
+          else if (tipo === "SPERRE") { cls = "chiusura"; pref = "🚫 "; }
+          else if (tipo === "BAUSTELLE") { cls = "baustelle"; pref = "🚧 "; }
           const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
           html += `<div class="evento ${cls}">
-            <div class="evento-titolo">${inc ? "💥 " : ""}${strada || "Evento"}</div>
+            <div class="evento-titolo">${pref}${strada || "Evento"}</div>
             <div class="evento-meta">${ev.messageGradDescIt || ""}${ev.messageZoneDescIt ? " · " + ev.messageZoneDescIt : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
             <div class="evento-testo">${ev.placeIt || ""}</div></div>`;
         });
         cont.innerHTML = html;
         const nC = sorted.filter(e => e.subTycodeValue === "SPERRE").length;
-        conteggio.textContent = `${sorted.length} eventi · ${nInc} incidenti · ${nC} chiusure`;
+        conteggio.textContent = `${sorted.length} eventi · ${nInc} incidenti · ${nCoda} code/rallentamenti · ${nC} chiusure`;
         const pub = dati[0]?.publishDateTime;
         agg.textContent = pub ? "Bollettino: " + new Date(pub).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
         window.__criticitaInc = [...new Set(criticita)];
