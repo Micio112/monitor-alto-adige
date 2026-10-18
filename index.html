@@ -62,14 +62,21 @@
     .btn-aed .heart { font-size: 1rem; }
     nav.quick {
       position: relative; z-index: 1;
-      display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
-      max-width: 960px; margin: 10px auto 0; padding: 0 4px;
+      display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 6px;
+      max-width: 960px; margin: 10px auto 0; padding: 4px 2px 6px;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin; scroll-snap-type: x proximity;
     }
+    nav.quick::-webkit-scrollbar { height: 4px; }
+    nav.quick::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 4px; }
     nav.quick a {
-      font-size: 0.72rem; padding: 7px 10px; border-radius: 999px;
-      background: rgba(255,255,255,0.15); color: white; text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.2);
+      flex: 0 0 auto; scroll-snap-align: start;
+      font-size: 0.74rem; padding: 8px 12px; border-radius: 999px;
+      background: rgba(255,255,255,0.16); color: white; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.22); white-space: nowrap;
+      line-height: 1.2;
     }
+    nav.quick a:active { background: rgba(255,255,255,0.28); }
     #banner-criticita {
       display: none; background: #c53030; color: white;
       padding: 10px 14px; font-size: 0.88rem; text-align: center; font-weight: 600;
@@ -108,10 +115,11 @@
     .giorno-mini img { width: 32px; height: 32px; margin: 4px auto; display: block; }
     .giorno-mini strong { display: block; color: #2c5282; font-size: 0.78rem; }
     .radar-wrap {
-      margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; height: 200px;
+      margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0;
+      height: min(52vw, 280px); min-height: 220px;
     }
-    @media (min-width: 560px) { .radar-wrap { height: 260px; } }
-    .radar-wrap iframe { width: 100%; height: 100%; border: 0; }
+    @media (min-width: 560px) { .radar-wrap { height: 320px; min-height: 300px; } }
+    .radar-wrap iframe { width: 100%; height: 100%; border: 0; display: block; }
     .link-ext { display: inline-block; margin-top: 8px; font-size: 0.88rem; color: #2b6cb0; }
 
     .pc-ok {
@@ -246,6 +254,29 @@
       padding: 12px; font-size: 0.9rem; color: #4a5568;
     }
     .contatti-box a { color: #2b6cb0; font-weight: 600; word-break: break-all; }
+
+    .chi-sono-testo {
+      font-size: 0.92rem; color: #2d3748; line-height: 1.55;
+    }
+    .chi-sono-testo p { margin-bottom: 12px; }
+    .chi-sono-testo p:last-child { margin-bottom: 0; }
+    .btn-ig-dm {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      color: #fff !important; font-weight: 700; text-decoration: none !important;
+      font-size: 0.9rem;
+    }
+    .app-112 {
+      margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0;
+    }
+    .app-112 h3 { font-size: 0.95rem; color: #1e3a5f; margin-bottom: 8px; }
+    .app-112-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .app-112-links a {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600;
+      text-decoration: none; border: 1px solid #e2e8f0; background: #f7fafc; color: #2b6cb0;
+    }
     footer {
       text-align: center; padding: 20px 16px 28px; font-size: 0.8rem; color: #777;
     }
@@ -294,7 +325,7 @@
     @media (max-width: 600px) {
       header h1 { font-size: 1.15rem; }
       header .site-logo { width: 38px; height: 38px; }
-      nav.quick a { font-size: 0.68rem; padding: 7px 9px; }
+      nav.quick a { font-size: 0.72rem; padding: 8px 11px; }
       .btn-aed { font-size: 0.6rem; max-width: 80px; min-height: 44px; }
       .scroll-box { max-height: 280px; }
     }
@@ -319,16 +350,17 @@
       </div>
     </div>
     <nav class="quick" aria-label="Sezioni">
-      <a href="#meteo">Meteo</a>
-      <a href="#pronto-soccorso">Pronto Soccorso</a>
-      <a href="#farmacie">Farmacie (Notte-Weekend-Festivi)</a>
-      <a href="#parcheggi">Parcheggi</a>
-      <a href="#viabilita">Viabilità</a>
-      <a href="#allerte">Allerte meteo</a>
-      <a href="#allarmi-pc">Allarmi PC</a>
-      <a href="#aed">AED</a>
-      <a href="#numeri-utili">Numeri utili</a>
-      <a href="#contatti">Contatti</a>
+      <a href="#allarmi-pc">🆘 Allarmi PC</a>
+      <a href="#meteo">🌤 Meteo</a>
+      <a href="#allerte">🚨 Allerte meteo</a>
+      <a href="#pronto-soccorso">🏥 Pronto Soccorso</a>
+      <a href="#aed">❤️ AED</a>
+      <a href="#farmacie">💊 Farmacie</a>
+      <a href="#viabilita">🚗 Viabilità</a>
+      <a href="#parcheggi">🅿️ Parcheggi</a>
+      <a href="#numeri-utili">📞 Numeri utili</a>
+      <a href="#chi-sono">👤 Chi sono</a>
+      <a href="#contatti">✉️ Contatti</a>
     </nav>
   </header>
 
@@ -339,34 +371,39 @@
       <button type="button" class="close-hint" aria-label="Chiudi" onclick="chiudiHint()">×</button>
       <strong>Installa come app</strong>
       <div id="hint-ios" style="display:none;margin-top:6px">Su iPhone: Condividi (□↑) → <b>Aggiungi a Home</b>.</div>
-      <div id="hint-android" style="display:none;margin-top:6px">Su Android: menu ⋮ → <b>Installa app</b>.</div>
-      <div id="hint-generic" style="margin-top:6px">Dal menu del browser: “Aggiungi a Home” / “Installa app”.</div>
-    </div>
-
+      
+    <section class="card" id="allarmi-pc">
+      <h2>🆘 Allarmi di Protezione Civile</h2>
+      <p class="aggiornamento">Comunicati operativi provincia</p>
+      <div class="lista-allarmi-pc"><p>Attendere…</p></div>
+      <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Portale ufficiale →</a>
+    </section>
     <section class="card" id="meteo">
       <h2>🌤 Meteo Alto Adige</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-meteo"><p>Attendere…</p></div>
     </section>
-
+    <section class="card" id="allerte">
+      <h2>🚨 Allerte meteo</h2>
+      <p class="aggiornamento">Caricamento…</p>
+      <div class="lista-allerte"><p>Attendere…</p></div>
+    </section>
     <section class="card" id="pronto-soccorso">
       <h2>🏥 Pronto Soccorso</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-ospedali"><p>Attendere…</p></div>
     </section>
-
+    <section class="card" id="aed">
+      <h2>❤️ Defibrillatori pubblici (AED)</h2>
+      <p class="aggiornamento">Elenco per comune</p>
+      <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
+      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
+    </section>
     <section class="card" id="farmacie" style="display:none">
       <h2>💊 Farmacie di turno</h2>
       <p class="aggiornamento">Notte (20–8) · weekend · festivi</p>
       <div class="lista-farmacie"><p>Caricamento…</p></div>
     </section>
-
-    <section class="card" id="parcheggi">
-      <h2>🅿️ Parcheggi</h2>
-      <p class="aggiornamento">Caricamento…</p>
-      <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
-    </section>
-
     <section class="card" id="viabilita">
       <h2>🚗 Viabilità</h2>
       <p class="aggiornamento">Caricamento…</p>
@@ -374,28 +411,11 @@
       <p class="viabilita-info" id="viabilita-conteggio"></p>
       <a class="link-ext" href="https://traffico.provincia.bz.it" target="_blank" rel="noopener">Bollettino ufficiale →</a>
     </section>
-
-    <section class="card" id="allerte">
-      <h2>🚨 Allerte meteo</h2>
+    <section class="card" id="parcheggi">
+      <h2>🅿️ Parcheggi</h2>
       <p class="aggiornamento">Caricamento…</p>
-      <div class="lista-allerte"><p>Attendere…</p></div>
+      <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
-
-    <section class="card" id="allarmi-pc">
-      <h2>🆘 Allarmi di Protezione Civile</h2>
-      <p class="aggiornamento">Comunicati operativi provincia</p>
-      <div class="lista-allarmi-pc"><p>Attendere…</p></div>
-      <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Portale ufficiale →</a>
-    </section>
-
-
-    <section class="card" id="aed">
-      <h2>❤️ Defibrillatori pubblici (AED)</h2>
-      <p class="aggiornamento">Elenco per comune</p>
-      <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
-      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
-    </section>
-
     <section class="card" id="numeri-utili">
       <h2>📞 Numeri utili</h2>
       <p class="aggiornamento">Tocca Chiama per comporre</p>
@@ -405,7 +425,7 @@
           <a class="btn-chiama" href="tel:112">☎ Chiama 112</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Centrale di Risposta provinciale CRI</div>
+          <div class="numero-nome">Centrale di Risposta Provinciale CRI</div>
           <a class="btn-chiama" href="tel:+390471080808">☎ Chiama 0471 080808</a>
         </div>
         <div class="numero-card">
@@ -438,20 +458,39 @@
           <a class="btn-chiama" href="tel:800310650">☎ Chiama 800 310 650</a>
         </div>
       </div>
+      <div class="app-112">
+        <h3>App emergenza «112 Where Are U»</h3>
+        <p class="aggiornamento" style="margin-bottom:8px">Invia posizione e chiama il 112 in un tocco</p>
+        <div class="app-112-links">
+          <a href="https://itunes.apple.com/us/app/112-where-are-u/id888964800" target="_blank" rel="noopener">🍎 iOS – App Store</a>
+          <a href="https://play.google.com/store/apps/details?id=it.Beta80Group.whereareu" target="_blank" rel="noopener">🤖 Android – Play Store</a>
+        </div>
+      </div>
     </section>
-
+    <section class="card" id="chi-sono">
+      <h2>👤 Chi sono</h2>
+      <p class="aggiornamento">Michel · Micio · Bolzano</p>
+      <div class="chi-sono-testo">
+        <p>Mi chiamo Michel, per gli amici Micio, e sono originario di Bolzano. Vigile del fuoco Volontario ed operatore della CRP-CRI, da diverso tempo pensavo che fosse difficoltoso ed a volte macchinoso dover ricercare nel web varie informazioni utili.</p>
+        <p>Per questo motivo ho inizialmente creato un piccolo sito privato ed un Bot su Telegram per inviare alcune info e news di base a me e ad una cerchia di amici stretti. Dopo alcuni feedback, motivato dalla monotonia di una settimana influenzato a casa e dal piacere di poter essere utile, ho creato questo sito / WebApp come strumento di utilità dove si possono trovare tutte le informazioni utili in un solo posto.</p>
+        <p>Ho anche migliorato e rilasciato pubblicamente il Bot su Telegram, in modo da poter recapitare notifiche del sito su aggiornamenti importanti e novità. Spero vi piaccia e vi possa esser utile, fatemi sapere cosa ne pensate e se vorreste vedere qualcos’altro.</p>
+        <p><b>Buon Monitoraggio!</b></p>
+      </div>
+    </section>
     <section class="card" id="contatti">
       <h2>✉️ Contatti</h2>
       <p class="aggiornamento">Segnalazioni bug · impressum · suggerimenti</p>
       <div class="contatti-box">
         Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br>
-        <a href="mailto:monitor.altoadige@gmail.com">monitor.altoadige@gmail.com</a>
+        <a href="mailto:monitor.altoadige@gmail.com">monitor.altoadige@gmail.com</a><br><br>
+        Oppure scrivimi in privato su Instagram:<br>
+        <a class="btn-ig-dm" href="https://www.instagram.com/allertealtoadige/" target="_blank" rel="noopener">📸 DM su Instagram</a>
       </div>
     </section>
   </main>
 
   <footer>
-    <p>Dati pubblici · SABES · SIAG · Centrale Viabilità · Open Data Hub · OpenAEDMap</p>
+    <p>Dati pubblici · SABES · SIAG (meteo &amp; allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer</p>
     <p class="credit">Curated by Micio</p>
   </footer>
 
@@ -608,7 +647,7 @@
           <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">Prognosi</h3>
           <div class="settimana">${settimana || "—"}</div>
           <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">Radar</h3>
-          <div class="radar-wrap"><iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe></div>
+          <div class="radar-wrap"><iframe src="https://www.rainviewer.com/map.html?loc=46.55,11.35,7&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe></div>
           <a class="link-ext" href="https://meteo.provincia.bz.it" target="_blank" rel="noopener">Meteo ufficiale →</a>`;
         agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
       } catch (e) { cont.innerHTML = "<p>Errore meteo.</p>"; }
