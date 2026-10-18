@@ -986,22 +986,28 @@ def _parse_orario_turno(f):
 
 
 def is_farmacia_notturna(f):
-    """Turno serale (es. 19:00–23:59) e/o dopo mezzanotte (es. 00:00–08:29).
+    """Turno serale/notturno per il report della sera.
 
-    L'API pubblica spesso due record IS_TURN: uno fino a mezzanotte e uno da 00:00.
-    Il report serale deve includerli entrambi.
+    Include:
+    - fascia serale (inizio >= 18:00, es. 19:00–23:59)
+    - dopo mezzanotte (00:00–08:29)
+    - copertura notturna ampia (00:00–23:59 / quasi 24h)
+    - orari che arrivano almeno fino a 23:00 (turno diurno lungo ancora aperto di sera)
     """
     orari = _parse_orario_turno(f)
     if orari:
         start, end = orari
-        # Fascia serale tipica: inizia dalle 18:00 in poi (spesso 19:00–23:59)
         if start >= 18 * 60:
             return True
-        # Fascia dopo mezzanotte: inizia a 00:00 (fino al mattino o al pomeriggio)
         if start <= 30:  # 00:00–00:30
             return True
-        # Intervallo che copre ore notturne centrali
         if start <= 6 * 60 and end <= 12 * 60:
+            return True
+        # Quasi tutto il giorno incluso sera/notte (es. 00:00–23:59, 08:30–23:59)
+        if end >= 23 * 60:
+            return True
+        # 24h classico
+        if start == 0 and end >= 23 * 60 + 50:
             return True
     t = " ".join([
         str(f.get("TURN_TIMETABLE") or ""),
@@ -1228,14 +1234,20 @@ def controlla_emergenze():
                 invia_messaggio(t)
                 set_daily_flag("meteo_sera")
 
-    # Farmacie SERA: ogni giorno 19:30–21:00 → solo turno di NOTTE (una volta/giorno)
-    if (h == 19 and m >= 30) or h == 20:
+    # Farmacie SERA: ogni giorno 19:00–22:00 (finestra ampia per ritardi GitHub Actions UTC)
+    # Solo turno notte/sera; flag SOLO dopo invio riuscito (se fallisce ritenta al run successivo)
+    if (h == 19 and m >= 0) or h in (20, 21):
         if not has_daily_flag("farm_sera"):
-            print("Invio farmacie notturne...")
-            set_daily_flag("farm_sera")  # marca subito per evitare doppio invio se il job si sovrappone
-            ok = invia_messaggio(report_farmacie("sera"))
-            if not ok:
-                print("Invio farmacie FALLITO (flag già impostato per oggi)")
+            print(f"Invio farmacie notturne (fascia {h:02d}:{m:02d})...")
+            msg = report_farmacie("sera")
+            ok = invia_messaggio(msg)
+            if ok:
+                set_daily_flag("farm_sera")
+                print("Farmacie serali inviate OK")
+            else:
+                print("Invio farmacie FALLITO – flag NON impostato, ritento al prossimo run")
+        else:
+            print("Farmacie serali già inviate oggi")
 
     # Farmacie MATTINA: solo weekend/festivi 7:30–10:00 → solo turno di GIORNO
     if is_weekend_or_holiday():
@@ -1274,7 +1286,14 @@ if __name__ == "__main__":
             else:
                 print("Invio report viabilità FALLITO")
         elif modo == "farmacie":
-            invia_messaggio(report_farmacie("sera" if ora_roma().hour >= 15 else "mattina"))
+            quando = "sera" if ora_roma().hour >= 15 else "mattina"
+            print(f"Modalità farmacie ({quando})...")
+            ok = invia_messaggio(report_farmacie(quando))
+            if ok:
+                set_daily_flag("farm_sera" if quando == "sera" else "farm_mattina")
+                print("Farmacie inviate OK")
+            else:
+                print("Invio farmacie FALLITO")
         else:
             controlla_emergenze()
     except Exception as e:
