@@ -1038,20 +1038,74 @@
       } catch (e) { cont.innerHTML = "<p>Errore connessione.</p>"; }
     }
 
+    async function fetchAEDFeatures() {
+      // 1) Fonte ufficiale Provincia (CIVIS GeoServer)
+      const civis =
+        "https://geoservices2.civis.bz.it/geoserver/pczs-PointsOfInterest/ows" +
+        "?service=WFS&version=2.0.0&request=GetFeature" +
+        "&typeName=pczs-PointsOfInterest:Defibrillator-Stations" +
+        "&outputFormat=application/json";
+      try {
+        const res = await fetch(civis, { mode: "cors", cache: "no-store" });
+        if (!res.ok) throw new Error("CIVIS HTTP " + res.status);
+        const dati = await res.json();
+        const feats = dati.features || [];
+        if (!feats.length) throw new Error("CIVIS vuoto");
+        return { source: "CIVIS", features: feats };
+      } catch (err) {
+        console.warn("AED CIVIS non disponibile:", err);
+      }
+      // 2) Fallback OpenStreetMap (Overpass) – bbox Alto Adige
+      const query =
+        '[out:json][timeout:30];' +
+        'node["emergency"="defibrillator"](46.2,10.35,47.15,12.55);' +
+        'out body;';
+      const res2 = await fetch("https://overpass-api.de/api/interpreter", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: "data=" + encodeURIComponent(query)
+      });
+      if (!res2.ok) throw new Error("Overpass HTTP " + res2.status);
+      const dati2 = await res2.json();
+      const features = (dati2.elements || []).map(el => {
+        const tags = el.tags || {};
+        return {
+          properties: {
+            MUNICIPALITY_IT: tags["addr:city"] || tags["addr:municipality"] || tags["addr:place"] || "Alto Adige",
+            STREET_IT: tags["addr:street"] || tags.name || "",
+            HOUSE_NUMBER: tags["addr:housenumber"] || "",
+            DESCRIPTION_IT: tags["defibrillator:location"] || tags.description || tags["emergency:social_facility"] || "",
+            LATITUDE: el.lat,
+            LONGITUDE: el.lon
+          }
+        };
+      });
+      if (!features.length) throw new Error("Nessun AED da Overpass");
+      return { source: "OpenStreetMap", features };
+    }
+
     async function caricaAED() {
       const cont = document.querySelector(".lista-aed");
+      const agg = document.querySelector("#aed .aggiornamento");
       try {
-        const url = "https://geoservices2.civis.bz.it/geoserver/pczs-PointsOfInterest/ows?service=WFS&version=2.0.0&request=GetFeature&typeName=pczs-PointsOfInterest:Defibrillator-Stations&outputFormat=application/json&count=500";
-        const res = await fetch(url);
-        const dati = await res.json();
+        const { source, features } = await fetchAEDFeatures();
         const perComune = {};
-        (dati.features || []).forEach(f => {
+        features.forEach(f => {
           const p = f.properties || {};
           const comune = p.MUNICIPALITY_IT || p.MUNICIPALITY_DE || "Altro";
           if (!perComune[comune]) perComune[comune] = [];
-          const via = [p.STREET_IT || p.STREET_DE, p.HOUSE_NUMBER].filter(Boolean).join(" ");
+          const via = [p.STREET_IT || p.STREET_DE, p.HOUSE_NUMBER].filter(Boolean).join(" ").trim();
           const desc = p.DESCRIPTION_IT || p.DESCRIPTION_DE || "";
-          perComune[comune].push({ via, desc, lat: p.LATITUDE, lon: p.LONGITUDE });
+          let lat = p.LATITUDE, lon = p.LONGITUDE;
+          // se mancano, prova geometria WGS84
+          if ((lat == null || lon == null) && f.geometry && f.geometry.type === "Point") {
+            const c = f.geometry.coordinates || [];
+            // solo se sembrano lat/lon (non proiezione UTM)
+            if (c.length >= 2 && Math.abs(c[1]) <= 90 && Math.abs(c[0]) <= 180) {
+              lon = c[0]; lat = c[1];
+            }
+          }
+          perComune[comune].push({ via, desc, lat, lon });
         });
         const nomi = Object.keys(perComune).sort((a, b) => {
           const ia = COMUNI_AED.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
@@ -1060,19 +1114,27 @@
           if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, "it");
         });
         let html = "";
+        let totale = 0;
         nomi.forEach(comune => {
-          html += `<div class="aed-comune"><h3>♥ ${comune} (${perComune[comune].length})</h3>`;
-          perComune[comune].forEach(it => {
+          const lista = perComune[comune];
+          totale += lista.length;
+          html += `<div class="aed-comune"><h3>♥ ${comune} (${lista.length})</h3>`;
+          lista.forEach(it => {
             let riga = it.via || "Indirizzo non disponibile";
             if (it.desc) riga += " – " + it.desc;
-            const maps = (it.lat && it.lon) ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">mappa</a>` : "";
+            const maps = (it.lat != null && it.lon != null)
+              ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">mappa</a>`
+              : "";
             html += `<div class="aed-item">${riga}${maps}</div>`;
           });
           html += `</div>`;
         });
         cont.innerHTML = html || "<p style='padding:12px'>Nessun AED.</p>";
+        if (agg) agg.textContent = totale + " defibrillatori · fonte " + source + " · " + new Date().toLocaleString("it-IT");
       } catch (e) {
-        cont.innerHTML = "<p style='padding:12px'>Errore AED. <a href='https://openaedmap.org/it/#map=10/46.5/11.35' target='_blank'>Mappa esterna</a></p>";
+        console.error("AED error", e);
+        cont.innerHTML = "<p style='padding:12px'>Errore caricamento AED. <a href='https://openaedmap.org/it/#map=10/46.5/11.35' target='_blank' rel='noopener'>Apri mappa esterna</a></p>";
+        if (agg) agg.textContent = "Errore · " + new Date().toLocaleString("it-IT");
       }
     }
 
