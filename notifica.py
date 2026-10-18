@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Monitor Alto Adige – notifiche Telegram."""
 import hashlib
+import re
 import json
 import os
 import sys
@@ -743,15 +744,115 @@ def _chiusura_prioritaria(ev):
     return False
 
 
+
+def _testo_evento(ev):
+    return " ".join([
+        str(ev.get("placeIt") or ""),
+        str(ev.get("placeDe") or ""),
+        str(ev.get("descriptionIt") or ""),
+        str(ev.get("messageStreetNr") or ""),
+        str(ev.get("messageZoneDescIt") or ""),
+        str(ev.get("messageStreetInternetDescIt") or ""),
+    ]).lower()
+
+
+def is_evento_estero(ev):
+    """Avvisi Austria/Tirolo o regole generiche non AA."""
+    t = _testo_evento(ev)
+    if "corridoio di sal" in t:
+        return True
+    markers = ("austria", "österreich", "tirolo del nord", "nordtirol", "nauders", "pfunds", "reschenbundes", "b180")
+    return any(m in t for m in markers)
+
+
+def _inizio_testuale_futuro(ev):
+    """True se il testo indica inizio dopo oggi (es. 'Da lunedì 19.10.2026')."""
+    t = (ev.get("placeIt") or "") + " " + (ev.get("descriptionIt") or "")
+    ora = ora_roma()
+    # DD.MM.YYYY o DD/MM/YYYY dopo "da"
+    for m in re.finditer(
+        r"da\s+(?:luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)?\s*"
+        r"(\d{1,2})[./](\d{1,2})[./](\d{2,4})",
+        t,
+        re.I,
+    ):
+        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if y < 100:
+            y += 2000
+        try:
+            start = datetime(y, mo, d, tzinfo=TZ)
+        except ValueError:
+            continue
+        if start.date() > ora.date():
+            return True
+    return False
+
+
+def _dedupe_eventi(lista):
+    """Rimuove duplicati per messageId e per fingerprint testo."""
+    out = []
+    visti_id = set()
+    visti_fp = set()
+    for ev in lista:
+        mid = str(ev.get("messageId") or "")
+        if mid and mid in visti_id:
+            continue
+        fp = hashlib.md5(
+            (str(ev.get("messageStreetNr") or "") + "|" + (ev.get("placeIt") or "")[:120]).lower().encode()
+        ).hexdigest()[:16]
+        if fp in visti_fp:
+            continue
+        if mid:
+            visti_id.add(mid)
+        visti_fp.add(fp)
+        out.append(ev)
+    return out
+
+
+def is_coda_per_report(ev):
+    """Code reali per il report mattutino (più stretto di is_coda_rallentamento)."""
+    if is_evento_estero(ev):
+        return False
+    if not evento_attivo_oggi(ev):
+        return False
+    if _inizio_testuale_futuro(ev):
+        return False
+    # Stessa logica push: no divieti/lavori etichettati come rallentamenti
+    if not is_coda_notificabile(ev):
+        # eccezione: testo con km di coda / code per traffico (live)
+        t = _testo_evento(ev)
+        if not re.search(r"\d+\s*km\s+di\s+coda|code?\s+per\s+traffico|in\s+coda", t):
+            return False
+        if any(x in t for x in ("divieto", "lavori", "cantiere", "senso unico", "peso superiore")):
+            return False
+    return True
+
+
+def is_chiusura_per_report(ev):
+    """Chiusure attive OGGI su A22/MEBO/città, senza estero né inizio futuro."""
+    if not _chiusura_prioritaria(ev):
+        return False
+    if is_evento_estero(ev):
+        return False
+    if not evento_attivo_oggi(ev):
+        return False
+    if _inizio_testuale_futuro(ev):
+        return False
+    return True
+
+
 def report_viabilita_mattutino():
     eventi = prendi_viabilita()
     if not eventi:
         return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
 
-    incidenti = [e for e in eventi if is_incidente(e) and evento_attivo_oggi(e)]
-    code = [e for e in eventi if is_coda_rallentamento(e) and evento_attivo_oggi(e)]
-    # Chiusure attive oggi solo su A22, MEBO e città/valli principali
-    chiusure = [e for e in eventi if _chiusura_prioritaria(e) and evento_attivo_oggi(e)]
+    incidenti = _dedupe_eventi([
+        e for e in eventi
+        if is_incidente(e) and evento_attivo_oggi(e) and not is_evento_estero(e)
+    ])
+    code = _dedupe_eventi([e for e in eventi if is_coda_per_report(e)])
+    # Solo chiusure attive oggi (niente inizio futuro, niente Austria)
+    chiusure = _dedupe_eventi([e for e in eventi if is_chiusura_per_report(e)])
 
     testo = (
         f"🚗 <b>Report viabilità mattutino</b>\n"
