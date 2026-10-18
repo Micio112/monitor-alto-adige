@@ -348,13 +348,13 @@
     <nav class="quick" aria-label="Sezioni">
       <a href="#allarmi-pc">🆘 Allarmi PC</a>
       <a href="#meteo">🌤 Meteo</a>
-      <a href="#allerte">🚨 Allerte meteo</a>
+      <a href="#allerte">🚨 Allerte Meteo</a>
       <a href="#pronto-soccorso">🏥 Pronto Soccorso</a>
       <a href="#aed">❤️ AED</a>
       <a href="#farmacie">💊 Farmacie</a>
       <a href="#viabilita">🚗 Viabilità</a>
       <a href="#parcheggi">🅿️ Parcheggi</a>
-      <a href="#numeri-utili">📞 Numeri utili</a>
+      <a href="#numeri-utili">📞 Numeri e Link utili</a>
       <a href="#chi-sono">👤 Chi sono</a>
       <a href="#contatti">✉️ Contatti</a>
     </nav>
@@ -383,7 +383,7 @@
       <div class="lista-meteo"><p>Attendere…</p></div>
     </section>
     <section class="card" id="allerte">
-      <h2>🚨 Allerte meteo</h2>
+      <h2>🚨 Allerte Meteo</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-allerte"><p>Attendere…</p></div>
     </section>
@@ -416,7 +416,7 @@
       <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
     <section class="card" id="numeri-utili">
-      <h2>📞 Numeri utili</h2>
+      <h2>📞 Numeri e Link utili</h2>
       <p class="aggiornamento">Tocca Chiama per comporre</p>
       <div class="numeri-lista">
         <div class="numero-card emergenza">
@@ -463,6 +463,14 @@
         <div class="app-112-links">
           <a href="https://itunes.apple.com/us/app/112-where-are-u/id888964800" target="_blank" rel="noopener">🍎 iOS – App Store</a>
           <a href="https://play.google.com/store/apps/details?id=it.Beta80Group.whereareu" target="_blank" rel="noopener">🤖 Android – Play Store</a>
+        </div>
+      </div>
+      <div class="app-112">
+        <h3>App mappe AED «Mapa AED»</h3>
+        <p class="aggiornamento" style="margin-bottom:8px">Trova i defibrillatori pubblici vicino a te</p>
+        <div class="app-112-links">
+          <a href="https://apps.apple.com/app/mapa-aed/id1638495701" target="_blank" rel="noopener">🍎 iOS – App Store</a>
+          <a href="https://play.google.com/store/apps/details?id=pl.enteam.aed_map" target="_blank" rel="noopener">🤖 Android – Play Store</a>
         </div>
       </div>
     </section>
@@ -573,18 +581,68 @@
       const md = (d.getMonth() + 1) + "-" + d.getDate();
       return ["1-1","1-6","4-25","5-1","6-2","8-15","11-1","12-8","12-25","12-26"].includes(md);
     }
+    function testoEv(ev) {
+      return [
+        ev.placeIt, ev.placeDe, ev.descriptionIt, ev.descriptionDe,
+        ev.subTycodeIt, ev.tycodeIt, ev.messageGradDescIt,
+        ev.messageStreetNr, ev.messageZoneDescIt, ev.messageStreetInternetDescIt
+      ].join(" ").toLowerCase();
+    }
+    function isEstero(ev) {
+      const t = testoEv(ev);
+      if (t.includes("corridoio di sal")) return true;
+      return /austria|österreich|tirolo del nord|nordtirol|nauders|pfunds|reschenbundes|\bb180\b/.test(t);
+    }
     function isIncidente(ev) {
-      const t = ((ev.placeIt || "") + " " + (ev.placeDe || "") + " " + (ev.subTycodeValue || "")).toLowerCase();
-      return /incident|unfall|tamponamento|scontro/.test(t);
+      return /incident|unfall|tamponamento|scontro/.test(testoEv(ev));
     }
     function isCoda(ev) {
+      /* Stessa logica del bot: code live, no divieti/lavori/rallentamenti statici */
+      if (isEstero(ev)) return false;
       const sub = (ev.subTycodeValue || "").toUpperCase();
+      if (sub === "BAUSTELLE" || sub === "SPERRE" || sub === "ALLGEMEIN") return false;
+      const t = testoEv(ev);
+      if (/divieto di transito|divieto transito|peso superiore|lunghezza superiore|rimorch|senso unico|lavori|cantiere|baustelle|aperto giornalmente|veicoli di peso|veicoli di lunghezza/.test(t)) {
+        return false;
+      }
       if (sub === "STAU") return true;
-      const t = [
-        ev.placeIt, ev.placeDe, ev.descriptionIt, ev.descriptionDe,
-        ev.subTycodeIt, ev.tycodeIt
-      ].join(" ").toLowerCase();
-      return /coda|code |stau|rallentament|rallentato|traffico intenso|stockung|lento scorrimento|traffico rallentato|mezzi pesanti in coda/.test(t);
+      if (/\d+\s*km\s+di\s+coda|code?\s+per\s+traffico|in\s+coda/.test(t)) return true;
+      // non basarsi solo su "rallentament"
+      return /\bcoda\b|code |\bstau\b|stockung|traffico rallentato|lento scorrimento|mezzi pesanti in coda|traffico intenso/.test(t);
+    }
+    function parseEvDate(val) {
+      if (!val) return null;
+      const d = new Date(String(val).replace(" ", "T"));
+      return isNaN(d.getTime()) ? null : d;
+    }
+    function inizioTestualeFuturo(ev) {
+      const t = (ev.placeIt || "") + " " + (ev.descriptionIt || "");
+      const re = /da\s+(?:luned[iì]|marted[iì]|mercoled[iì]|gioved[iì]|venerd[iì]|sabato|domenica)?\s*(\d{1,2})[./](\d{1,2})[./](\d{2,4})/gi;
+      let m;
+      const oggi = new Date();
+      oggi.setHours(0,0,0,0);
+      while ((m = re.exec(t))) {
+        let y = parseInt(m[3], 10); if (y < 100) y += 2000;
+        const start = new Date(y, parseInt(m[2],10)-1, parseInt(m[1],10));
+        if (start > oggi) return true;
+      }
+      return false;
+    }
+    function eventoAttivoOggi(ev) {
+      const now = new Date();
+      const startDay = new Date(now); startDay.setHours(0,0,0,0);
+      const begin = parseEvDate(ev.beginDate);
+      const end = parseEvDate(ev.endDate);
+      if (begin && begin.getTime() > now.getTime() + 15*60000) return false;
+      if (end && end < startDay) return false;
+      if (end && end.getTime() < now.getTime() - 30*60000) return false;
+      if (inizioTestualeFuturo(ev)) return false;
+      return true;
+    }
+    function isChiusuraVisibile(ev) {
+      if ((ev.subTycodeValue || "").toUpperCase() !== "SPERRE") return false;
+      if (isEstero(ev)) return false;
+      return eventoAttivoOggi(ev);
     }
     function aggiornaBanner(items) {
       const el = document.getElementById("banner-criticita");
@@ -850,29 +908,42 @@
           if ((ev.subTycodeValue || "") === "BAUSTELLE") return 3;
           return 4;
         }
-        const sorted = [...dati].sort((a, b) => priorita(a) - priorita(b));
-        let html = "", nInc = 0, nCoda = 0;
+        const filtrati = dati.filter(ev => {
+          if (isEstero(ev)) return false;
+          if (isIncidente(ev)) return eventoAttivoOggi(ev);
+          if (isCoda(ev)) return eventoAttivoOggi(ev);
+          if (isChiusuraVisibile(ev)) return true;
+          return false;
+        });
+        const sorted = [...filtrati].sort((a, b) => priorita(a) - priorita(b));
+        let html = "", nInc = 0, nCoda = 0, nChius = 0;
+        const visti = new Set();
         sorted.forEach(ev => {
+          const mid = String(ev.messageId || "");
+          const fp = ((ev.messageStreetNr || "") + "|" + (ev.placeIt || "").slice(0, 80)).toLowerCase();
+          if (mid && visti.has("id:" + mid)) return;
+          if (visti.has("fp:" + fp)) return;
+          if (mid) visti.add("id:" + mid);
+          visti.add("fp:" + fp);
           const tipo = ev.subTycodeValue || "";
           const inc = isIncidente(ev);
           const coda = !inc && isCoda(ev);
+          const chius = !inc && !coda && tipo === "SPERRE";
           if (inc) { nInc++; criticita.push("Incidente"); }
           if (coda) nCoda++;
-          let cls = "";
-          let pref = "";
+          if (chius) nChius++;
+          let cls = "", pref = "";
           if (inc) { cls = "incidente"; pref = "💥 "; }
           else if (coda) { cls = "coda"; pref = "🚗 "; }
-          else if (tipo === "SPERRE") { cls = "chiusura"; pref = "🚫 "; }
-          else if (tipo === "BAUSTELLE") { cls = "baustelle"; pref = "🚧 "; }
+          else if (chius) { cls = "chiusura"; pref = "🚫 "; }
           const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
           html += `<div class="evento ${cls}">
             <div class="evento-titolo">${pref}${strada || "Evento"}</div>
             <div class="evento-meta">${ev.messageGradDescIt || ""}${ev.messageZoneDescIt ? " · " + ev.messageZoneDescIt : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
             <div class="evento-testo">${ev.placeIt || ""}</div></div>`;
         });
-        cont.innerHTML = html;
-        const nC = sorted.filter(e => e.subTycodeValue === "SPERRE").length;
-        conteggio.textContent = `${sorted.length} eventi · ${nInc} incidenti · ${nCoda} code/rallentamenti · ${nC} chiusure`;
+        cont.innerHTML = html || "<p style='padding:12px'>Nessun incidente, coda o chiusura attiva oggi.</p>";
+        conteggio.textContent = `${nInc + nCoda + nChius} eventi · ${nInc} incidenti · ${nCoda} code · ${nChius} chiusure (attive oggi)`;
         const pub = dati[0]?.publishDateTime;
         agg.textContent = pub ? "Bollettino: " + new Date(pub).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
         window.__criticitaInc = [...new Set(criticita)];
