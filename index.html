@@ -62,16 +62,11 @@
     .btn-aed .heart { font-size: 1rem; }
     nav.quick {
       position: relative; z-index: 1;
-      display: flex; flex-wrap: nowrap; justify-content: flex-start; gap: 6px;
-      max-width: 960px; margin: 10px auto 0; padding: 4px 2px 6px;
-      overflow-x: auto; -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin; scroll-snap-type: x proximity;
+      display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
+      max-width: 960px; margin: 10px auto 0; padding: 4px 2px 2px;
     }
-    nav.quick::-webkit-scrollbar { height: 4px; }
-    nav.quick::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.35); border-radius: 4px; }
     nav.quick a {
-      flex: 0 0 auto; scroll-snap-align: start;
-      font-size: 0.74rem; padding: 8px 12px; border-radius: 999px;
+      font-size: 0.72rem; padding: 7px 11px; border-radius: 999px;
       background: rgba(255,255,255,0.16); color: white; text-decoration: none;
       border: 1px solid rgba(255,255,255,0.22); white-space: nowrap;
       line-height: 1.2;
@@ -371,7 +366,10 @@
       <button type="button" class="close-hint" aria-label="Chiudi" onclick="chiudiHint()">×</button>
       <strong>Installa come app</strong>
       <div id="hint-ios" style="display:none;margin-top:6px">Su iPhone: Condividi (□↑) → <b>Aggiungi a Home</b>.</div>
-      
+      <div id="hint-android" style="display:none;margin-top:6px">Su Android: menu ⋮ → <b>Installa app</b>.</div>
+      <div id="hint-generic" style="margin-top:6px">Dal menu del browser: “Aggiungi a Home” / “Installa app”.</div>
+    </div>
+
     <section class="card" id="allarmi-pc">
       <h2>🆘 Allarmi di Protezione Civile</h2>
       <p class="aggiornamento">Comunicati operativi provincia</p>
