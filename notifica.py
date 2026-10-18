@@ -136,18 +136,49 @@ def save_state(name, data):
     _state_path(name).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
-def already_sent(event_key, ttl_hours=36):
-    """True se già notificato di recente."""
+def was_sent(event_key, ttl_hours=36):
+    """True se già notificato di recente (non marca)."""
     st = load_state("events", {})
     now = ora_roma().timestamp()
-    # pulizia
-    st = {k: v for k, v in st.items() if now - v < ttl_hours * 3600}
-    if event_key in st:
-        save_state("events", st)
-        return True
+    st = {k: v for k, v in st.items() if now - v < max(ttl_hours, 48) * 3600}
+    save_state("events", st)
+    ts = st.get(event_key)
+    if ts is None:
+        return False
+    return (now - ts) < ttl_hours * 3600
+
+
+def mark_sent(event_key):
+    """Segna un evento come già notificato."""
+    st = load_state("events", {})
+    now = ora_roma().timestamp()
+    st = {k: v for k, v in st.items() if now - v < 48 * 3600}
     st[event_key] = now
     save_state("events", st)
+
+
+def already_sent(event_key, ttl_hours=36):
+    """Compatibilità: True se già inviato; altrimenti marca e ritorna False."""
+    if was_sent(event_key, ttl_hours=ttl_hours):
+        return True
+    mark_sent(event_key)
     return False
+
+
+def _coda_rate_ok(max_n=3, window_hours=2):
+    """Max max_n notifiche code nella finestra (anti-spam globale)."""
+    st = load_state("coda_rate", {"ts": []})
+    now = ora_roma().timestamp()
+    ts = [x for x in st.get("ts", []) if now - x < window_hours * 3600]
+    return len(ts) < max_n
+
+
+def _coda_rate_mark():
+    st = load_state("coda_rate", {"ts": []})
+    now = ora_roma().timestamp()
+    ts = [x for x in st.get("ts", []) if now - x < 6 * 3600]
+    ts.append(now)
+    save_state("coda_rate", {"ts": ts})
 
 
 def has_daily_flag(name):
@@ -542,7 +573,7 @@ def is_incidente(ev):
 
 
 def is_coda_rallentamento(ev):
-    """Code, STAU, traffico intenso / rallentato dalla Centrale Viabilità."""
+    """Code, STAU, traffico intenso / rallentato (per report e classificazione ampia)."""
     sub = (ev.get("subTycodeValue") or "").upper()
     if sub == "STAU":
         return True
@@ -560,6 +591,42 @@ def is_coda_rallentamento(ev):
         "traffico rallentato", "mezzi pesanti in coda",
     )
     return any(k in t for k in keywords)
+
+
+def is_coda_notificabile(ev):
+    """Più stretto per le PUSH: solo code/stau/rallentamenti chiari.
+    Esclude il generico 'traffico intenso' che genera molto rumore."""
+    sub = (ev.get("subTycodeValue") or "").upper()
+    if sub == "STAU":
+        return True
+    t = " ".join([
+        str(ev.get("placeIt") or ""),
+        str(ev.get("placeDe") or ""),
+        str(ev.get("descriptionIt") or ""),
+        str(ev.get("descriptionDe") or ""),
+        str(ev.get("subTycodeIt") or ""),
+        str(ev.get("tycodeIt") or ""),
+        str(ev.get("messageGradDescIt") or ""),
+    ]).lower()
+    strong = (
+        "coda", "code ", "stau", "rallentament", "rallentato",
+        "stockung", "lento scorrimento", "traffico rallentato",
+        "mezzi pesanti in coda", "in coda",
+    )
+    if not any(k in t for k in strong):
+        return False
+    # Escludi avvisi puramente informativi / futuri già filtrati altrove
+    return True
+
+
+def _fingerprint_coda(ev):
+    """Chiave grezza per strada+zona (ignora testo che cambia a ogni aggiornamento)."""
+    strada = (ev.get("messageStreetNr") or "").upper().strip()
+    if not strada:
+        strada = (ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt") or "X")[:30].upper()
+    zona = (ev.get("messageZoneDescIt") or "").lower().strip()[:50]
+    raw = f"{strada}|{zona}"
+    return "coda-road-" + hashlib.md5(raw.encode()).hexdigest()[:14]
 
 
 
@@ -711,45 +778,70 @@ def report_viabilita_mattutino():
 
 def nuove_chiusure_e_incidenti():
     """Push solo per incidenti e code ATTIVI OGGI, pubblicati di recente.
-    Anti-spam code: TTL lungo + fingerprint per strada/zona (messageId può cambiare)."""
+
+    Anti-spam code (rafforzato):
+    - solo code/stau/rallentamenti chiari (non generico traffico intenso)
+    - pubblicate da ≤ 45 minuti
+    - stesso messageId: blocco 18h
+    - stessa strada+zona: blocco 18h (anche se cambia l'id)
+    - max 3 notifiche code ogni 2 ore (tutto il bot)
+    """
     eventi = prendi_viabilita()
     ora = ora_roma()
     out = []
+    code_candidati = []
+
     for ev in eventi:
         if not evento_attivo_oggi(ev):
             continue
 
         pub = _parse_evento_dt(ev.get("publishDateTime"))
         if pub is None:
-            # senza data pubblicazione: solo se begin è oggi/recente
             begin = _parse_evento_dt(ev.get("beginDate"))
             if not begin or (ora - begin).total_seconds() > 6 * 3600:
                 continue
-            delta = (ora - begin).total_seconds() if begin else 99999
+            delta = (ora - begin).total_seconds()
         else:
             delta = (ora - pub).total_seconds()
 
         mid = str(ev.get("messageId") or "") or "x"
 
         if is_incidente(ev):
-            # pubblicati nelle ultime 3 ore
             if not (0 <= delta <= 3 * 3600):
                 continue
             key_id = f"incidente-{mid}"
             key_fp = _fingerprint_viabilita(ev, "incidente")
-            if already_sent(key_id, ttl_hours=12) or already_sent(key_fp, ttl_hours=12):
+            if was_sent(key_id, ttl_hours=12) or was_sent(key_fp, ttl_hours=12):
                 continue
+            mark_sent(key_id)
+            mark_sent(key_fp)
             out.append("💥 <b>Incidente stradale</b>\n" + formatta_evento_viabilita(ev))
-        elif is_coda_rallentamento(ev):
-            # code: solo se pubblicate di recente (90 min) e non già notificate
-            # su stessa strada/zona nelle ultime 12 ore
-            if not (0 <= delta <= 1.5 * 3600):
+            continue
+
+        if is_coda_notificabile(ev):
+            # solo molto recenti
+            if not (0 <= delta <= 45 * 60):
                 continue
             key_id = f"coda-{mid}"
-            key_fp = _fingerprint_viabilita(ev, "coda")
-            if already_sent(key_id, ttl_hours=12) or already_sent(key_fp, ttl_hours=12):
+            key_fp = _fingerprint_coda(ev)
+            if was_sent(key_id, ttl_hours=18) or was_sent(key_fp, ttl_hours=18):
                 continue
-            out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
+            code_candidati.append((delta, key_id, key_fp, ev))
+
+    # Ordina dalle più recenti; applica rate limit globale
+    code_candidati.sort(key=lambda x: x[0])  # delta crescente = più recente
+    for delta, key_id, key_fp, ev in code_candidati:
+        if not _coda_rate_ok(max_n=3, window_hours=2):
+            print(f"Anti-spam code: rate limit raggiunto, salto {key_fp}")
+            break
+        if was_sent(key_id, ttl_hours=18) or was_sent(key_fp, ttl_hours=18):
+            continue
+        mark_sent(key_id)
+        mark_sent(key_fp)
+        _coda_rate_mark()
+        out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
+        print(f"Coda notificata: {key_fp} (pubblicata {int(delta/60)} min fa)")
+
     return out
 
 
