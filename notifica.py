@@ -5,7 +5,7 @@ import json
 import os
 import sys
 import traceback
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -15,7 +15,7 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 SUBS_URL = os.environ.get("SUBS_URL")
 SUBS_KEY = os.environ.get("SUBS_KEY")
-SITE_URL = (os.environ.get("SITE_URL") or "").strip().rstrip("/")
+SITE_URL = (os.environ.get("SITE_URL") or "https://monitor-alto-adige-pub.pages.dev").strip().rstrip("/")
 
 TZ = ZoneInfo("Europe/Rome")
 STATE_DIR = Path(".state")
@@ -221,6 +221,9 @@ def invia_messaggio(testo):
     if not dest:
         print("Nessun destinatario")
         return False
+    # Link sito in fondo a ogni messaggio (una sola volta)
+    if SITE_URL and SITE_URL not in (testo or ""):
+        testo = (testo or "").rstrip() + f"\n\n🌐 {SITE_URL}"
     parti = _spezza_messaggio(testo)
     if not parti:
         print("Messaggio vuoto")
@@ -559,6 +562,56 @@ def is_coda_rallentamento(ev):
     return any(k in t for k in keywords)
 
 
+
+def _parse_evento_dt(val):
+    """Parse beginDate/endDate/publishDateTime in timezone Roma."""
+    if not val:
+        return None
+    try:
+        s = str(val).strip().replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s[:26] if "T" in s else s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=TZ)
+        return dt.astimezone(TZ)
+    except Exception:
+        return None
+
+
+def evento_attivo_oggi(ev):
+    """True se l'evento interessa la giornata odierna (niente eventi solo futuri)."""
+    ora = ora_roma()
+    inizio_giorno = ora.replace(hour=0, minute=0, second=0, microsecond=0)
+    fine_giorno = ora.replace(hour=23, minute=59, second=59, microsecond=999999)
+    begin = _parse_evento_dt(ev.get("beginDate"))
+    end = _parse_evento_dt(ev.get("endDate"))
+
+    # Inizio nel futuro (dopo adesso) → non ancora attivo
+    if begin and begin > ora + timedelta(minutes=15):
+        return False
+    # Inizio oltre oggi → giornata futura
+    if begin and begin > fine_giorno:
+        return False
+    # Già terminato ieri o prima
+    if end and end < inizio_giorno:
+        return False
+    # Terminato chiaramente prima di adesso (con margine 30 min)
+    if end and end < ora - timedelta(minutes=30):
+        return False
+    return True
+
+
+def _fingerprint_viabilita(ev, prefisso="ev"):
+    """Chiave stabile per anti-spam (strada + zona + tipo), non solo messageId."""
+    pezzi = [
+        prefisso,
+        str(ev.get("messageStreetNr") or ""),
+        str(ev.get("messageZoneDescIt") or ""),
+        str(ev.get("subTycodeValue") or ""),
+        (str(ev.get("placeIt") or "")[:80]),
+    ]
+    raw = "|".join(pezzi).lower().strip()
+    return f"{prefisso}-" + hashlib.md5(raw.encode()).hexdigest()[:16]
+
 def formatta_evento_viabilita_breve(ev):
     """Versione compatta per report lunghi."""
     strada = " ".join(filter(None, [
@@ -607,10 +660,10 @@ def report_viabilita_mattutino():
     if not eventi:
         return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
 
-    incidenti = [e for e in eventi if is_incidente(e)]
-    code = [e for e in eventi if is_coda_rallentamento(e)]
-    # Chiusure attive solo su A22, MEBO e città/valli principali
-    chiusure = [e for e in eventi if _chiusura_prioritaria(e)]
+    incidenti = [e for e in eventi if is_incidente(e) and evento_attivo_oggi(e)]
+    code = [e for e in eventi if is_coda_rallentamento(e) and evento_attivo_oggi(e)]
+    # Chiusure attive oggi solo su A22, MEBO e città/valli principali
+    chiusure = [e for e in eventi if _chiusura_prioritaria(e) and evento_attivo_oggi(e)]
 
     testo = (
         f"🚗 <b>Report viabilità mattutino</b>\n"
@@ -657,33 +710,44 @@ def report_viabilita_mattutino():
 
 
 def nuove_chiusure_e_incidenti():
+    """Push solo per incidenti e code ATTIVI OGGI, pubblicati di recente.
+    Anti-spam code: TTL lungo + fingerprint per strada/zona (messageId può cambiare)."""
     eventi = prendi_viabilita()
     ora = ora_roma()
     out = []
     for ev in eventi:
-        pub = ev.get("publishDateTime")
-        if not pub:
-            continue
-        try:
-            dt = datetime.fromisoformat(pub.replace("Z", "+00:00"))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=TZ)
-            delta = (ora - dt.astimezone(TZ)).total_seconds()
-            if not (0 <= delta <= 2.5 * 3600):
-                continue
-        except Exception:
+        if not evento_attivo_oggi(ev):
             continue
 
-        mid = str(ev.get("messageId") or "")
-        # Solo incidenti e code/rallentamenti (niente push per nuove chiusure)
+        pub = _parse_evento_dt(ev.get("publishDateTime"))
+        if pub is None:
+            # senza data pubblicazione: solo se begin è oggi/recente
+            begin = _parse_evento_dt(ev.get("beginDate"))
+            if not begin or (ora - begin).total_seconds() > 6 * 3600:
+                continue
+            delta = (ora - begin).total_seconds() if begin else 99999
+        else:
+            delta = (ora - pub).total_seconds()
+
+        mid = str(ev.get("messageId") or "") or "x"
+
         if is_incidente(ev):
-            key = f"incidente-{mid}"
-            if already_sent(key, ttl_hours=12):
+            # pubblicati nelle ultime 3 ore
+            if not (0 <= delta <= 3 * 3600):
+                continue
+            key_id = f"incidente-{mid}"
+            key_fp = _fingerprint_viabilita(ev, "incidente")
+            if already_sent(key_id, ttl_hours=12) or already_sent(key_fp, ttl_hours=12):
                 continue
             out.append("💥 <b>Incidente stradale</b>\n" + formatta_evento_viabilita(ev))
         elif is_coda_rallentamento(ev):
-            key = f"coda-{mid}"
-            if already_sent(key, ttl_hours=6):
+            # code: solo se pubblicate di recente (90 min) e non già notificate
+            # su stessa strada/zona nelle ultime 12 ore
+            if not (0 <= delta <= 1.5 * 3600):
+                continue
+            key_id = f"coda-{mid}"
+            key_fp = _fingerprint_viabilita(ev, "coda")
+            if already_sent(key_id, ttl_hours=12) or already_sent(key_fp, ttl_hours=12):
                 continue
             out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
     return out
