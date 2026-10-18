@@ -594,11 +594,18 @@ def is_coda_rallentamento(ev):
 
 
 def is_coda_notificabile(ev):
-    """Più stretto per le PUSH: solo code/stau/rallentamenti chiari.
-    Esclude il generico 'traffico intenso' che genera molto rumore."""
+    """PUSH: solo code/traffico live, non divieti/lavori etichettati come 'rallentamenti'.
+
+    Esclude tipici falsi positivi della Centrale Viabilità:
+    - divieti di peso/lunghezza (passi montani)
+    - senso unico alternato / cantieri / lavori
+    - restrizioni permanenti o di lunga durata
+    """
     sub = (ev.get("subTycodeValue") or "").upper()
-    if sub == "STAU":
-        return True
+    # Tipi strutturali: non sono code in tempo reale
+    if sub in ("BAUSTELLE", "SPERRE", "ALLGEMEIN"):
+        return False
+
     t = " ".join([
         str(ev.get("placeIt") or ""),
         str(ev.get("placeDe") or ""),
@@ -608,15 +615,29 @@ def is_coda_notificabile(ev):
         str(ev.get("tycodeIt") or ""),
         str(ev.get("messageGradDescIt") or ""),
     ]).lower()
-    strong = (
-        "coda", "code ", "stau", "rallentament", "rallentato",
-        "stockung", "lento scorrimento", "traffico rallentato",
-        "mezzi pesanti in coda", "in coda",
+
+    # Falsi positivi: restrizioni e lavori (anche se la categoria dice "rallentamenti")
+    escludi = (
+        "divieto di transito", "divieto transito", "divieto per",
+        "peso superiore", "lunghezza superiore", "rimorch",
+        "senso unico", "lavori", "cantiere", "baustelle",
+        "aperto giornalmente", "conclusiv", "confine provinciale",
+        "non c'è una deviazione", "non c'e una deviazione",
+        "veicoli di peso", "veicoli di lunghezza",
     )
-    if not any(k in t for k in strong):
+    if any(x in t for x in escludi):
         return False
-    # Escludi avvisi puramente informativi / futuri già filtrati altrove
-    return True
+
+    # Accetta STAU (tipo ufficiale coda) oppure testo con coda/stau esplicito.
+    # NON usare solo "rallentament": la provincia lo mette su molti avvisi statici.
+    if sub == "STAU":
+        return True
+    strong = (
+        "coda", "code ", " in coda", "stau", "stockung",
+        "traffico rallentato", "lento scorrimento",
+        "mezzi pesanti in coda", "traffico intenso",
+    )
+    return any(k in t for k in strong)
 
 
 def _fingerprint_coda(ev):
@@ -819,9 +840,15 @@ def nuove_chiusure_e_incidenti():
             continue
 
         if is_coda_notificabile(ev):
-            # solo molto recenti
+            # solo pubblicate di recente
             if not (0 <= delta <= 45 * 60):
                 continue
+            # escludi avvisi "cronici" iniziati da più di 12 ore
+            begin = _parse_evento_dt(ev.get("beginDate"))
+            if begin is not None:
+                age_begin = (ora - begin).total_seconds()
+                if age_begin > 12 * 3600:
+                    continue
             key_id = f"coda-{mid}"
             key_fp = _fingerprint_coda(ev)
             if was_sent(key_id, ttl_hours=18) or was_sent(key_fp, ttl_hours=18):
