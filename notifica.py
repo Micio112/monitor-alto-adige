@@ -1228,14 +1228,15 @@ def nuove_chiusure_e_incidenti():
 
 # ========== FARMACIE ==========
 def _parse_orario_turno(f):
-    """Estrae (start_min, end_min) da TURN_TIMETABLE tipo '19:00 - 23:59' o '00:00 - 08:29'."""
-    import re
-    tt = (f.get("TURN_TIMETABLE") or "").strip()
-    m = re.search(r"(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})", tt)
+    """Estrae (start_min, end_min) da TURN_TIMETABLE o PHAR_TIMETABLE."""
+    import re as _re
+    tt = (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
+    m = _re.search(r"(\d{1,2}):(\d{2})\s*[-–]\s*(\d{1,2}):(\d{2})", tt)
     if not m:
         return None
     h1, m1, h2, m2 = map(int, m.groups())
     return h1 * 60 + m1, h2 * 60 + m2
+
 
 
 def is_farmacia_notturna(f):
@@ -1294,9 +1295,12 @@ def prendi_farmacie_turno(modo="tutte"):
         dati = requests.get("https://daten.buergernetz.bz.it/services/pharmacy/v1/json", timeout=20).json()
         on = [x for x in dati if x.get("IS_TURN") == 1]
         filtrati = []
+        nomi_ok = [c.lower() for c in COMUNI_FARM] + [
+            "bozen", "meran", "brixen", "bruneck", "sterzing", "schlanders", "leifers"
+        ]
         for x in on:
-            comune = x.get("GEME_DESC_I") or ""
-            if any(c.lower() in comune.lower() for c in COMUNI_FARM):
+            comune = ((x.get("GEME_DESC_I") or "") + " " + (x.get("GEME_DESC_D") or "")).lower()
+            if any(c in comune for c in nomi_ok):
                 filtrati.append(x)
         lista = filtrati or on
         if modo == "notte":
@@ -1318,6 +1322,10 @@ def report_farmacie(quando="sera"):
     """quando: 'sera' → notte; 'mattina' → diurne. Restituisce dict {it, de}."""
     modo = "notte" if quando in ("sera", "notte", "notturno") else "giorno"
     farm = prendi_farmacie_turno(modo)
+    if modo == "notte" and not farm:
+        print("report_farmacie: notte vuota → fallback a tutte le in-turno")
+        farm = prendi_farmacie_turno("tutte")
+        modo = "notte"  # etichetta resta notturna
     nl = chr(10)
 
     def _build(lang):
@@ -1521,18 +1529,30 @@ def controlla_emergenze():
                 invia_messaggio(t)
                 set_daily_flag("meteo_sera")
 
-    # Farmacie SERA: ogni giorno 19:00–22:00 (finestra ampia per ritardi GitHub Actions UTC)
-    # Solo turno notte/sera; flag SOLO dopo invio riuscito (se fallisce ritenta al run successivo)
-    if (h == 19 and m >= 0) or h in (20, 21):
+    # Farmacie SERA: ogni giorno 18:00–23:30 (Roma).
+    # Finestra larga perché GitHub Actions (cron UTC) può ritardare molto.
+    # Flag solo dopo invio OK con almeno una farmacia in lista.
+    if 18 <= h < 24 and not (h == 23 and m > 30):
         if not has_daily_flag("farm_sera"):
             print(f"Invio farmacie notturne (fascia {h:02d}:{m:02d})...")
+            farm = prendi_farmacie_turno("notte")
+            if not farm:
+                # fallback: tutte quelle in turno nei comuni principali (meglio un messaggio che nessuno)
+                print("Nessuna classificato notturno – uso tutte le IS_TURN nei comuni principali")
+                farm = prendi_farmacie_turno("tutte")
             msg = report_farmacie("sera")
-            ok = invia_messaggio(msg)
-            if ok:
-                set_daily_flag("farm_sera")
-                print("Farmacie serali inviate OK")
+            # se report dice "nessun dato" e farm vuoto, non marcare flag
+            testo_it = msg.get("it", "") if isinstance(msg, dict) else (msg or "")
+            vuoto = (not farm) or ("Nessun dato" in testo_it) or ("Keine Daten" in (msg.get("de", "") if isinstance(msg, dict) else ""))
+            if vuoto:
+                print("Lista farmacie vuota – NON imposto flag, ritento")
             else:
-                print("Invio farmacie FALLITO – flag NON impostato, ritento al prossimo run")
+                ok = invia_messaggio(msg)
+                if ok:
+                    set_daily_flag("farm_sera")
+                    print("Farmacie serali inviate OK")
+                else:
+                    print("Invio farmacie FALLITO – flag NON impostato, ritento al prossimo run")
         else:
             print("Farmacie serali già inviate oggi")
 
