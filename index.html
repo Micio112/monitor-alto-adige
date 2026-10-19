@@ -60,6 +60,25 @@
       font-size: 0.68rem; font-weight: 700; line-height: 1.15; text-align: center; max-width: 92px;
     }
     .btn-aed .heart { font-size: 1rem; }
+
+    .lang-switch {
+      display: inline-flex; flex-shrink: 0; border-radius: 10px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.15);
+    }
+    .lang-switch button {
+      border: 0; background: transparent; color: rgba(255,255,255,0.75);
+      font-size: 0.72rem; font-weight: 700; padding: 8px 10px; cursor: pointer;
+      min-width: 36px; line-height: 1;
+    }
+    .lang-switch button.active {
+      background: rgba(255,255,255,0.92); color: #1e3a5f;
+    }
+    .farm-orari-box {
+      background: #edf2f7; border-radius: 10px; padding: 14px; border: 1px solid #e2e8f0;
+      font-size: 0.92rem; color: #2d3748; line-height: 1.55;
+    }
+    .farm-orari-box strong { color: #1e3a5f; }
+    .farm-orari-box ul { margin: 8px 0 0 18px; }
     nav.quick {
       position: relative; z-index: 1;
       display: flex; flex-wrap: wrap; justify-content: center; gap: 6px;
@@ -338,25 +357,29 @@
     </div>
     <div class="header-top">
       <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">
-        <span class="heart">♥</span><span>I NEED<br>AN AED</span>
+        <span class="heart">♥</span><span data-i18n="btn_aed">I NEED<br>AN AED</span>
       </a>
       <div class="logo-title">
         <img class="site-logo" src="icon-192.png" width="44" height="44" alt="Logo Monitor Alto Adige">
         <h1>Monitor Alto Adige</h1>
       </div>
+      <div class="lang-switch" role="group" aria-label="Language / Sprache">
+        <button type="button" class="lang-btn active" data-set-lang="it" aria-pressed="true">IT</button>
+        <button type="button" class="lang-btn" data-set-lang="de" aria-pressed="false">DE</button>
+      </div>
     </div>
     <nav class="quick" aria-label="Sezioni">
-      <a href="#allarmi-pc">🆘 Allarmi PC</a>
-      <a href="#meteo">🌤 Meteo</a>
-      <a href="#allerte">🚨 Allerte Meteo</a>
-      <a href="#pronto-soccorso">🏥 Pronto Soccorso</a>
-      <a href="#aed">❤️ AED</a>
-      <a href="#farmacie">💊 Farmacie</a>
-      <a href="#viabilita">🚗 Viabilità</a>
-      <a href="#parcheggi">🅿️ Parcheggi</a>
-      <a href="#numeri-utili">📞 Numeri e Link utili</a>
-      <a href="#chi-sono">👤 Chi sono</a>
-      <a href="#contatti">✉️ Contatti</a>
+      <a href="#allarmi-pc" data-i18n="nav_pc">🆘 Allarmi PC</a>
+      <a href="#meteo" data-i18n="nav_meteo">🌤 Meteo</a>
+      <a href="#allerte" data-i18n="nav_allerte">🚨 Allerte Meteo</a>
+      <a href="#pronto-soccorso" data-i18n="nav_ps">🏥 Pronto Soccorso</a>
+      <a href="#aed" data-i18n="nav_aed">❤️ AED</a>
+      <a href="#farmacie" data-i18n="nav_farm">💊 Farmacie</a>
+      <a href="#viabilita" data-i18n="nav_via">🚗 Viabilità</a>
+      <a href="#parcheggi" data-i18n="nav_park">🅿️ Parcheggi</a>
+      <a href="#numeri-utili" data-i18n="nav_numeri">📞 Numeri e Link utili</a>
+      <a href="#chi-sono" data-i18n="nav_chi">👤 Chi sono</a>
+      <a href="#contatti" data-i18n="nav_contatti">✉️ Contatti</a>
     </nav>
   </header>
 
@@ -365,109 +388,109 @@
   <main>
     <div id="install-hint">
       <button type="button" class="close-hint" aria-label="Chiudi" onclick="chiudiHint()">×</button>
-      <strong>Installa come app</strong>
+      <strong data-i18n="install_title">Installa come app</strong>
       <div id="hint-ios" style="display:none;margin-top:6px">Su iPhone: Condividi (□↑) → <b>Aggiungi a Home</b>.</div>
       <div id="hint-android" style="display:none;margin-top:6px">Su Android: menu ⋮ → <b>Installa app</b>.</div>
       <div id="hint-generic" style="margin-top:6px">Dal menu del browser: “Aggiungi a Home” / “Installa app”.</div>
     </div>
 
     <section class="card" id="allarmi-pc">
-      <h2>🆘 Allarmi di Protezione Civile</h2>
-      <p class="aggiornamento">Comunicati operativi provincia</p>
+      <h2 data-i18n="h_pc">🆘 Allarmi di Protezione Civile</h2>
+      <p class="aggiornamento" data-i18n="agg_pc">Comunicati operativi provincia</p>
       <div class="lista-allarmi-pc"><p>Attendere…</p></div>
-      <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Portale ufficiale →</a>
+      <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener"><span data-i18n="link_pc">Portale ufficiale →</span></a>
     </section>
     <section class="card" id="meteo">
-      <h2>🌤 Meteo Alto Adige</h2>
+      <h2 data-i18n="h_meteo">🌤 Meteo Alto Adige</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-meteo"><p>Attendere…</p></div>
     </section>
     <section class="card" id="allerte">
-      <h2>🚨 Allerte Meteo</h2>
+      <h2 data-i18n="h_allerte">🚨 Allerte Meteo</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-allerte"><p>Attendere…</p></div>
     </section>
     <section class="card" id="pronto-soccorso">
-      <h2>🏥 Pronto Soccorso</h2>
+      <h2 data-i18n="h_ps">🏥 Pronto Soccorso</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-ospedali"><p>Attendere…</p></div>
     </section>
     <section class="card" id="aed">
-      <h2>❤️ Defibrillatori pubblici (AED)</h2>
-      <p class="aggiornamento">Elenco per comune</p>
+      <h2 data-i18n="h_aed">❤️ Defibrillatori pubblici (AED)</h2>
+      <p class="aggiornamento" data-i18n="agg_aed">Elenco per comune</p>
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
-      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">Mappa interattiva →</a>
+      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener"><span data-i18n="link_aed">Mappa interattiva →</span></a>
     </section>
-    <section class="card" id="farmacie" style="display:none">
-      <h2>💊 Farmacie di turno</h2>
-      <p class="aggiornamento">Notte (20–8) · weekend · festivi</p>
-      <div class="lista-farmacie"><p>Caricamento…</p></div>
+    <section class="card" id="farmacie">
+      <h2 data-i18n="h_farm">💊 Farmacie di turno</h2>
+      <p class="aggiornamento" data-i18n="agg_farm">Notte (20–8) · weekend · festivi</p>
+      <div class="lista-farmacie"><p data-i18n="loading">Caricamento…</p></div>
     </section>
     <section class="card" id="viabilita">
-      <h2>🚗 Viabilità</h2>
+      <h2 data-i18n="h_via">🚗 Viabilità</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="scroll-box"><div class="lista-viabilita"><p style="padding:12px">Attendere…</p></div></div>
       <p class="viabilita-info" id="viabilita-conteggio"></p>
-      <a class="link-ext" href="https://traffico.provincia.bz.it" target="_blank" rel="noopener">Bollettino ufficiale →</a>
+      <a class="link-ext" href="https://traffico.provincia.bz.it" id="link-via-uff" target="_blank" rel="noopener"><span data-i18n="link_via">Bollettino ufficiale →</span></a>
     </section>
     <section class="card" id="parcheggi">
-      <h2>🅿️ Parcheggi</h2>
+      <h2 data-i18n="h_park">🅿️ Parcheggi</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
     <section class="card" id="numeri-utili">
-      <h2>📞 Numeri e Link utili</h2>
-      <p class="aggiornamento">Tocca Chiama per comporre</p>
+      <h2 data-i18n="h_numeri">📞 Numeri e Link utili</h2>
+      <p class="aggiornamento" data-i18n="agg_numeri">Tocca Chiama per comporre</p>
       <div class="numeri-lista">
         <div class="numero-card emergenza">
-          <div class="numero-nome">Emergenza</div>
-          <a class="btn-chiama" href="tel:112">☎ Chiama 112</a>
+          <div class="numero-nome" data-i18n="num_emergenza">Emergenza</div>
+          <a class="btn-chiama" href="tel:112">📞 Call 112</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Centrale di Risposta Provinciale CRI</div>
-          <a class="btn-chiama" href="tel:+390471080808">☎ Chiama 0471 080808</a>
+          <div class="numero-nome" data-i18n="num_cri">Centrale di Risposta Provinciale CRI</div>
+          <a class="btn-chiama" href="tel:+390471080808">📞 Call 0471 080808</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Centrale Croce Bianca</div>
-          <a class="btn-chiama" href="tel:+390471444444">☎ Chiama 0471 444444</a>
+          <div class="numero-nome" data-i18n="num_cb">Centrale Croce Bianca</div>
+          <a class="btn-chiama" href="tel:+390471444444">📞 Call 0471 444444</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Centrale Viabilità</div>
-          <div class="numero-orario">Lun–Sab 6:00–20:00 · Dom/festivi 7:30–20:00</div>
-          <a class="btn-chiama" href="tel:+390471200198">☎ Chiama 0471 200198</a>
+          <div class="numero-nome" data-i18n="num_via">Centrale Viabilità</div>
+          <div class="numero-orario" data-i18n="num_via_orario">Lun–Sab 6:00–20:00 · Dom/festivi 7:30–20:00</div>
+          <a class="btn-chiama" href="tel:+390471200198">📞 Call 0471 200198</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Emergenza SEAB – acqua (Bolzano)</div>
+          <div class="numero-nome" data-i18n="num_seab_h2o">Emergenza SEAB – acqua (Bolzano)</div>
           <div class="numero-orario">H24</div>
-          <a class="btn-chiama" href="tel:800046143">☎ Chiama 800 046 143</a>
+          <a class="btn-chiama" href="tel:800046143">📞 Call 800 046 143</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Emergenza SEAB – gas (Bolzano)</div>
+          <div class="numero-nome" data-i18n="num_seab_gas">Emergenza SEAB – gas (Bolzano)</div>
           <div class="numero-orario">H24</div>
-          <a class="btn-chiama" href="tel:800046144">☎ Chiama 800 046 144</a>
+          <a class="btn-chiama" href="tel:800046144">📞 Call 800 046 144</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Emergenza Edyna – rete elettrica</div>
+          <div class="numero-nome" data-i18n="num_edyna_el">Emergenza Edyna – rete elettrica</div>
           <div class="numero-orario">H24</div>
-          <a class="btn-chiama" href="tel:800550522">☎ Chiama 800 550 522</a>
+          <a class="btn-chiama" href="tel:800550522">📞 Call 800 550 522</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Emergenza Edyna – rete gas</div>
+          <div class="numero-nome" data-i18n="num_edyna_gas">Emergenza Edyna – rete gas</div>
           <div class="numero-orario">H24</div>
-          <a class="btn-chiama" href="tel:800310650">☎ Chiama 800 310 650</a>
+          <a class="btn-chiama" href="tel:800310650">📞 Call 800 310 650</a>
         </div>
       </div>
       <div class="app-112">
-        <h3>App emergenza «112 Where Are U»</h3>
-        <p class="aggiornamento" style="margin-bottom:8px">Invia posizione e chiama il 112 in un tocco</p>
+        <h3 data-i18n="app_112_title">App emergenza «112 Where Are U»</h3>
+        <p class="aggiornamento" style="margin-bottom:8px" data-i18n="app_112_desc">Invia posizione e chiama il 112 in un tocco</p>
         <div class="app-112-links">
           <a href="https://itunes.apple.com/us/app/112-where-are-u/id888964800" target="_blank" rel="noopener">🍎 iOS – App Store</a>
           <a href="https://play.google.com/store/apps/details?id=it.Beta80Group.whereareu" target="_blank" rel="noopener">🤖 Android – Play Store</a>
         </div>
       </div>
       <div class="app-112">
-        <h3>App mappe AED «Mapa AED»</h3>
-        <p class="aggiornamento" style="margin-bottom:8px">Trova i defibrillatori pubblici vicino a te</p>
+        <h3 data-i18n="app_aed_title">App mappe AED «Mapa AED»</h3>
+        <p class="aggiornamento" style="margin-bottom:8px" data-i18n="app_aed_desc">Trova i defibrillatori pubblici vicino a te</p>
         <div class="app-112-links">
           <a href="https://apps.apple.com/app/mapa-aed/id1638495701" target="_blank" rel="noopener">🍎 iOS – App Store</a>
           <a href="https://play.google.com/store/apps/details?id=pl.enteam.aed_map" target="_blank" rel="noopener">🤖 Android – Play Store</a>
@@ -475,29 +498,19 @@
       </div>
     </section>
     <section class="card" id="chi-sono">
-      <h2>👤 Chi sono</h2>
-      <p class="aggiornamento">Michel · Micio · Bolzano</p>
-      <div class="chi-sono-testo">
-        <p>Mi chiamo Michel, per gli amici Micio, e sono originario di Bolzano. Vigile del fuoco Volontario ed operatore della CRP-CRI, da diverso tempo pensavo che fosse difficoltoso ed a volte macchinoso dover ricercare nel web varie informazioni utili.</p>
-        <p>Per questo motivo ho inizialmente creato un piccolo sito privato ed un Bot su Telegram per inviare alcune info e news di base a me e ad una cerchia di amici stretti. Dopo alcuni feedback, motivato dalla monotonia di una settimana influenzato a casa e dal piacere di poter essere utile, ho creato questo sito / WebApp come strumento di utilità dove si possono trovare tutte le informazioni utili in un solo posto.</p>
-        <p>Ho anche migliorato e rilasciato pubblicamente il Bot su Telegram, in modo da poter recapitare notifiche del sito su aggiornamenti importanti e novità. Spero vi piaccia e vi possa esser utile, fatemi sapere cosa ne pensate e se vorreste vedere qualcos’altro.</p>
-        <p><b>Buon Monitoraggio!</b></p>
-      </div>
+      <h2 data-i18n="h_chi">👤 Chi sono</h2>
+      <p class="aggiornamento">Michel · Micio · Bozen / Bolzano</p>
+      <div class="chi-sono-testo" data-i18n-html="chi_sono_html"></div>
     </section>
     <section class="card" id="contatti">
-      <h2>✉️ Contatti</h2>
-      <p class="aggiornamento">Segnalazioni bug · impressum · suggerimenti</p>
-      <div class="contatti-box">
-        Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br>
-        <a href="mailto:monitor.altoadige@gmail.com">monitor.altoadige@gmail.com</a><br><br>
-        Oppure scrivimi in privato su Instagram:<br>
-        <a class="btn-ig-dm" href="https://www.instagram.com/allertealtoadige/" target="_blank" rel="noopener">📸 DM su Instagram</a>
-      </div>
+      <h2 data-i18n="h_contatti">✉️ Contatti</h2>
+      <p class="aggiornamento" data-i18n="agg_contatti">Segnalazioni bug · impressum · suggerimenti</p>
+      <div class="contatti-box" data-i18n-html="contatti_html"></div>
     </section>
   </main>
 
   <footer>
-    <p>Dati pubblici · SABES · SIAG (meteo &amp; allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer</p>
+    <p data-i18n="footer_dati">Dati pubblici · SABES · SIAG (meteo &amp; allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer</p>
     <p class="credit">Curated by Micio</p>
   </footer>
 
@@ -515,6 +528,226 @@
   </div>
 
   <script>
+
+    let lang = localStorage.getItem("monitor_lang") || "it";
+    const I18N = {
+      it: {
+        btn_aed: "I NEED<br>AN AED",
+        nav_pc: "🆘 Allarmi PC", nav_meteo: "🌤 Meteo", nav_allerte: "🚨 Allerte Meteo",
+        nav_ps: "🏥 Pronto Soccorso", nav_aed: "❤️ AED", nav_farm: "💊 Farmacie",
+        nav_via: "🚗 Viabilità", nav_park: "🅿️ Parcheggi", nav_numeri: "📞 Numeri e Link utili",
+        nav_chi: "👤 Chi sono", nav_contatti: "✉️ Contatti",
+        h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
+        link_pc: "Portale ufficiale →", h_meteo: "🌤 Meteo Alto Adige", h_allerte: "🚨 Allerte Meteo",
+        h_ps: "🏥 Pronto Soccorso", h_aed: "❤️ Defibrillatori pubblici (AED)", agg_aed: "Elenco per comune",
+        link_aed: "Mappa interattiva →", h_farm: "💊 Farmacie di turno",
+        agg_farm: "Notte (20–8) · weekend · festivi",
+        h_via: "🚗 Viabilità", link_via: "Bollettino ufficiale →", h_park: "🅿️ Parcheggi",
+        h_numeri: "📞 Numeri e Link utili", agg_numeri: "Tocca Chiama per comporre",
+        num_emergenza: "Emergenza", chiama: "Chiama",
+        app_112_title: "App emergenza «112 Where Are U»",
+        app_112_desc: "Invia posizione e chiama il 112 in un tocco",
+        app_aed_title: "App mappe AED «Mapa AED»",
+        app_aed_desc: "Trova i defibrillatori pubblici vicino a te",
+        h_chi: "👤 Chi sono", h_contatti: "✉️ Contatti",
+        agg_contatti: "Segnalazioni bug · impressum · suggerimenti",
+        footer_dati: "Dati pubblici · SABES · SIAG (meteo & allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer",
+        install_title: "Installa come app", loading: "Caricamento…", wait: "Attendere…",
+        farm_none: "Nessuna farmacia di turno nei comuni principali.",
+        farm_err: "Errore farmacie.", farmacia: "Farmacia",
+        farm_closed_html: "<strong>Le farmacie di turno non sono mostrate in questo momento.</strong><br>Questa sezione è attiva:<ul><li><b>Tutti i giorni</b> dalle <b>20:00</b> alle <b>08:00</b> (turno di notte)</li><li><b>Weekend e festivi</b> anche di giorno (turno diurno)</li></ul>Fuori da questi orari tutte le farmacie seguono gli orari di apertura ordinari."
+        ,
+        site_title: "Monitor Alto Adige",
+        app_title: "Monitor AA",
+        num_cri: "Centrale di Risposta Provinciale CRI",
+        num_cb: "Centrale Croce Bianca",
+        num_via: "Centrale Viabilità",
+        num_via_orario: "Lun–Sab 6:00–20:00 · Dom/festivi 7:30–20:00",
+        num_seab_h2o: "Emergenza SEAB – acqua (Bolzano)",
+        num_seab_gas: "Emergenza SEAB – gas (Bolzano)",
+        num_edyna_el: "Emergenza Edyna – rete elettrica",
+        num_edyna_gas: "Emergenza Edyna – rete gas",
+        updated: "Aggiornato", last_update: "Ultimo aggiornamento", no_data: "Nessun dato",
+        err_ps: "Errore Pronto Soccorso.", err_meteo: "Errore meteo.", err_allerte: "Errore allerte.",
+        err_conn: "Errore connessione.", err_via: "Errore viabilità.", err_park: "Errore parcheggi.",
+        err_pc: "Errore caricamento.", in_attesa: "in attesa",
+        oggi: "Oggi", domani: "Domani", prognosi: "Prognosi", radar: "Radar",
+        radar_full: "Apri radar a schermo intero →", meteo_uff: "Meteo ufficiale →",
+        no_allerta: "Nessuna allerta attiva", zona: "Zona",
+        pc_none: "Al momento non c'è alcun avviso di protezione civile.",
+        pc_none_agg: "Nessun avviso", pc_read: "Leggi sul sito ufficiale →", pc_open: "Apri portale ufficiale →",
+        pc_title_fallback: "Comunicato di Protezione Civile",
+        via_none: "Nessun evento.", via_empty: "Nessun incidente, coda o chiusura attiva oggi.",
+        via_count: "eventi", via_inc: "incidenti", via_code: "code", via_chius: "chiusure (attive oggi)",
+        park_none: "Nessun dato parcheggi disponibile.", park_no_upd: "Nessun aggiornamento",
+        park_free: "liberi", park_posti: "posti", park_map: "mappa", park_ev: "ricarica EV",
+        park_surv: "videosorveglianza", park_name: "Parcheggio",
+        layout_underground: "interrato", layout_covered: "coperto", layout_open: "aperto", layout_multi: "multipiano",
+        triage1: "Rosso", triage2: "Arancione", triage3: "Giallo", triage4: "Verde", triage5: "Blu",
+        color_verde: "verde", color_gialla: "gialla", color_arancione: "arancione", color_rossa: "rossa",
+        criticita: "Criticità attive",
+        ban_ps: "PS",
+        ban_eh: "EH",
+        ban_allerta: "Allerta",
+        ban_pc: "Allarme PC",
+        ban_inc: "Incidente",
+        ban_inc_n: "Incidenti",
+        chi_sono_html: "<p>Mi chiamo Michel, per gli amici Micio, e sono originario di Bolzano. Vigile del fuoco Volontario ed operatore della CRP-CRI, da diverso tempo pensavo che fosse difficoltoso ed a volte macchinoso dover ricercare nel web varie informazioni utili.</p><p>Per questo motivo ho inizialmente creato un piccolo sito privato ed un Bot su Telegram per inviare alcune info e news di base a me e ad una cerchia di amici stretti. Dopo alcuni feedback, motivato dalla monotonia di una settimana influenzato a casa e dal piacere di poter essere utile, ho creato questo sito / WebApp come strumento di utilità dove si possono trovare tutte le informazioni utili in un solo posto.</p><p>Ho anche migliorato e rilasciato pubblicamente il Bot su Telegram, in modo da poter recapitare notifiche del sito su aggiornamenti importanti e novità. Spero vi piaccia e vi possa esser utile, fatemi sapere cosa ne pensate e se vorreste vedere qualcos’altro.</p><p><b>Buon Monitoraggio!</b></p>",
+        contatti_html: "Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oppure scrivimi in privato su Instagram:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/allertealtoadige/\" target=\"_blank\" rel=\"noopener\">📸 DM su Instagram</a>"
+      },
+      de: {
+        btn_aed: "I NEED<br>AN AED",
+        nav_pc: "🆘 Zivilschutz", nav_meteo: "🌤 Wetter", nav_allerte: "🚨 Wetterwarnungen",
+        nav_ps: "🏥 EH", nav_aed: "❤️ AED", nav_farm: "💊 Apotheken",
+        nav_via: "🚗 Verkehr", nav_park: "🅿️ Parkplätze", nav_numeri: "📞 Nummern & Links",
+        nav_chi: "👤 Über mich", nav_contatti: "✉️ Kontakt",
+        h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
+        link_pc: "Offizielles Portal →", h_meteo: "🌤 Wetter Südtirol", h_allerte: "🚨 Wetterwarnungen",
+        h_ps: "🏥 EH (Notaufnahme)", h_aed: "❤️ Öffentliche Defibrillatoren (AED)", agg_aed: "Liste nach Gemeinde",
+        link_aed: "Interaktive Karte →", h_farm: "💊 Bereitschaftsapotheken",
+        agg_farm: "Nacht (20–8) · Wochenende · Feiertage",
+        h_via: "🚗 Verkehrslage", link_via: "Offizielles Bulletin →", h_park: "🅿️ Parkplätze",
+        h_numeri: "📞 Nützliche Nummern & Links", agg_numeri: "Tippe auf Anrufen zum Wählen",
+        num_emergenza: "Notruf", chiama: "Anrufen",
+        app_112_title: "Notruf-App «112 Where Are U»",
+        app_112_desc: "Standort senden und 112 mit einem Tipp anrufen",
+        app_aed_title: "AED-Karten-App «Mapa AED»",
+        app_aed_desc: "Öffentliche Defibrillatoren in deiner Nähe finden",
+        h_chi: "👤 Über mich", h_contatti: "✉️ Kontakt",
+        agg_contatti: "Fehlermeldungen · Impressum · Vorschläge",
+        footer_dati: "Öffentliche Daten · SABES · SIAG (Wetter & Zivilschutz) · allertameteo.app · Verkehrszentrale · Open Data Hub · OpenAEDMap · Apotheken Bürgernetz · RainViewer",
+        install_title: "Als App installieren", loading: "Laden…", wait: "Bitte warten…",
+        farm_none: "Keine Bereitschaftsapotheke in den Hauptgemeinden.",
+        farm_err: "Fehler bei den Apotheken.", farmacia: "Apotheke",
+        farm_closed_html: "<strong>Bereitschaftsapotheken werden derzeit nicht angezeigt.</strong><br>Dieser Bereich ist aktiv:<ul><li><b>Täglich</b> von <b>20:00</b> bis <b>08:00</b> (Nachtdienst)</li><li><b>Wochenende und Feiertage</b> auch tagsüber (Tagesdienst)</li></ul>Außerhalb dieser Zeiten gelten die normalen Öffnungszeiten der Apotheken."
+        ,
+        site_title: "Monitor Südtirol",
+        app_title: "Monitor ST",
+        nav_ps: "🏥 EH",
+        h_ps: "🏥 EH (Notaufnahme)",
+        num_cri: "Landeskontaktstelle IRK",
+        num_cb: "Weißes Kreuz Zentrale",
+        num_via: "Verkehrszentrale",
+        num_via_orario: "Mo–Sa 6:00–20:00 · So/Feiertage 7:30–20:00",
+        num_seab_h2o: "SEAB-Notfall – Wasser (Bozen)",
+        num_seab_gas: "SEAB-Notfall – Gas (Bozen)",
+        num_edyna_el: "Edyna-Notfall – Stromnetz",
+        num_edyna_gas: "Edyna-Notfall – Gasnetz",
+        updated: "Aktualisiert", last_update: "Letzte Aktualisierung", no_data: "Keine Daten",
+        err_ps: "Fehler Notaufnahme.", err_meteo: "Fehler Wetter.", err_allerte: "Fehler Warnungen.",
+        err_conn: "Verbindungsfehler.", err_via: "Fehler Verkehr.", err_park: "Fehler Parkplätze.",
+        err_pc: "Ladefehler.", in_attesa: "wartend",
+        oggi: "Heute", domani: "Morgen", prognosi: "Prognose", radar: "Radar",
+        radar_full: "Radar im Vollbild öffnen →", meteo_uff: "Offizielles Wetter →",
+        no_allerta: "Keine aktive Warnung", zona: "Zone",
+        pc_none: "Derzeit liegt keine Zivilschutzwarnung vor.",
+        pc_none_agg: "Keine Warnung", pc_read: "Auf der offiziellen Seite lesen →", pc_open: "Offizielles Portal öffnen →",
+        pc_title_fallback: "Zivilschutzmitteilung",
+        via_none: "Kein Ereignis.", via_empty: "Kein Unfall, Stau oder aktive Sperre heute.",
+        via_count: "Ereignisse", via_inc: "Unfälle", via_code: "Staus", via_chius: "Sperren (heute aktiv)",
+        park_none: "Keine Parkdaten verfügbar.", park_no_upd: "Keine Aktualisierung",
+        park_free: "frei", park_posti: "Plätze", park_map: "Karte", park_ev: "E-Laden",
+        park_surv: "Videoüberwachung", park_name: "Parkplatz",
+        layout_underground: "Tiefgarage", layout_covered: "überdacht", layout_open: "offen", layout_multi: "mehrstöckig",
+        triage1: "Rot", triage2: "Orange", triage3: "Gelb", triage4: "Grün", triage5: "Blau",
+        color_verde: "grün", color_gialla: "gelb", color_arancione: "orange", color_rossa: "rot",
+        criticita: "Aktuelle Hinweise",
+        ban_ps: "EH",
+        ban_eh: "EH",
+        ban_allerta: "Warnung",
+        ban_pc: "Zivilschutz",
+        ban_inc: "Unfall",
+        ban_inc_n: "Unfälle",
+        chi_sono_html: "<p>Ich heiße Michel, für Freunde Micio, und komme aus Bozen. Als Freiwilliger Feuerwehrmann und Mitarbeiter der LKS-IRK fand ich es oft umständlich, nützliche Informationen im Web zusammensuchen zu müssen.</p><p>Deshalb habe ich zunächst eine kleine private Website und einen Telegram-Bot für mich und enge Freunde erstellt. Nach Feedback und einer grippalen Woche zu Hause – und aus Freude, nützlich zu sein – habe ich diese Website / WebApp als praktisches Tool gebaut, in dem man viele wichtige Infos an einem Ort findet.</p><p>Den Telegram-Bot habe ich verbessert und öffentlich gemacht, damit wichtige Updates und Neuigkeiten per Benachrichtigung ankommen. Ich hoffe, das Angebot gefällt und hilft – Feedback und Wünsche sind willkommen.</p><p><b>Gutes Monitoring!</b></p>",
+        contatti_html: "Für Fehlermeldungen, Verbesserungsvorschläge oder Anfragen zum Impressum / Service schreib an:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oder per Instagram-DM:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/allertealtoadige/\" target=\"_blank\" rel=\"noopener\">📸 DM auf Instagram</a>"
+      }
+    };
+    function t(key) {
+      return (I18N[lang] && I18N[lang][key]) || (I18N.it[key]) || key;
+    }
+    function applyLang() {
+      document.documentElement.lang = lang;
+      const title = t("site_title");
+      document.title = title;
+      const h1 = document.querySelector("header h1");
+      if (h1) h1.textContent = title;
+      const appMeta = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (appMeta) appMeta.setAttribute("content", t("app_title"));
+      document.querySelectorAll("[data-i18n]").forEach(el => {
+        const k = el.getAttribute("data-i18n");
+        const val = t(k);
+        if (val && val.indexOf("<") >= 0) el.innerHTML = val;
+        else if (val) el.textContent = val;
+      });
+      document.querySelectorAll("[data-i18n-html]").forEach(el => {
+        el.innerHTML = t(el.getAttribute("data-i18n-html"));
+      });
+      document.querySelectorAll(".lang-btn").forEach(btn => {
+        const on = btn.getAttribute("data-set-lang") === lang;
+        btn.classList.toggle("active", on);
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      const pcLink = document.querySelector("#allarmi-pc > .link-ext");
+      if (pcLink) pcLink.href = lang === "de"
+        ? "https://allerta-protezione-civile.provincia.bz.it/de/home"
+        : "https://allerta-protezione-civile.provincia.bz.it/it/home";
+      const viaLink = document.getElementById("link-via-uff");
+      if (viaLink) viaLink.href = lang === "de" ? "https://verkehr.provinz.bz.it/" : "https://traffico.provincia.bz.it/";
+      // Ricalcola etichette banner criticità nella lingua scelta
+      mergeBanner();
+    }
+    function loc() { return lang === "de" ? "de-DE" : "it-IT"; }
+    function nomeOspedale(raw) {
+      if (!raw) return "";
+      if (raw.indexOf("/") >= 0) {
+        const parts = raw.split("/").map(s => s.trim());
+        return lang === "de" ? (parts[1] || parts[0]) : (parts[0] || parts[1]);
+      }
+      return raw;
+    }
+    function triageNome(cod) { return t("triage" + cod) || (TRIAGE[cod] && TRIAGE[cod].nome) || cod; }
+    function traduciAllertaTesto(s) {
+      if (!s || lang !== "de") return s || "";
+      let x = String(s);
+      [
+        [/Nessuna Allerta/gi, "Keine Warnung"],
+        [/NESSUNA ALLERTA/gi, "KEINE WARNUNG"],
+        [/Assenza di fenomeni significativi prevedibili/gi, "Keine signifikanten Phänomene vorhersehbar"],
+        [/MODERATA CRITICIT[AÀ]'? PER RISCHIO TEMPORALI/gi, "MÄSSIGE KRITISCHKEIT DURCH GEWITTER"],
+        [/ORDINARIA CRITICIT[AÀ]/gi, "GEWÖHNLICHE KRITISCHKEIT"],
+        [/ELEVATA CRITICIT[AÀ]/gi, "HOHE KRITISCHKEIT"],
+        [/ALLERTA ARANCIONE/gi, "ORANGE WARNUNG"],
+        [/ALLERTA GIALLA/gi, "GELBE WARNUNG"],
+        [/ALLERTA ROSSA/gi, "ROTE WARNUNG"],
+        [/ALLERTA VERDE/gi, "GRÜNE WARNUNG"],
+        [/RISCHIO TEMPORALI/gi, "GEWITTERGEFAHR"],
+        [/RISCHIO IDRAULICO/gi, "HYDRAULISCHES RISIKO"],
+        [/RISCHIO IDROGEOLOGICO/gi, "HYDROGEOLOGISCHES RISIKO"]
+      ].forEach(([re, to]) => { x = x.replace(re, to); });
+      return x;
+    }
+    function coloreAllertaLabel(colore) {
+      const c = (colore || "verde").toLowerCase();
+      if (c.startsWith("verd")) return t("color_verde");
+      if (c.startsWith("gial")) return t("color_gialla");
+      if (c.startsWith("aran")) return t("color_arancione");
+      if (c.startsWith("ross")) return t("color_rossa");
+      return colore;
+    }
+    function setLang(l) {
+      lang = l === "de" ? "de" : "it";
+      localStorage.setItem("monitor_lang", lang);
+      applyLang();
+      try { caricaMeteo(); } catch (e) {}
+      try { caricaProntoSoccorso(); } catch (e) {}
+      try { caricaFarmacie(); } catch (e) {}
+      try { caricaParcheggi(); } catch (e) {}
+      try { caricaViabilita(); } catch (e) {}
+      try { caricaAllerte(); } catch (e) {}
+      try { caricaAllarmiPC(); } catch (e) {}
+      try { caricaAED(); } catch (e) {}
+    }
+
     const TELEGRAM_BOT = "Micioalertbot";
     if (TELEGRAM_BOT) document.getElementById("btn-telegram").href = "https://t.me/" + TELEGRAM_BOT;
 
@@ -646,24 +879,39 @@
     }
     function aggiornaBanner(items) {
       const el = document.getElementById("banner-criticita");
-      if (!items.length) { el.classList.remove("visible"); el.innerHTML = ""; return; }
-      el.innerHTML = "⚠️ Criticità: " + items.join(" · ");
+      if (!el) return;
+      if (!items || !items.length) {
+        el.classList.remove("visible");
+        el.innerHTML = "";
+        return;
+      }
       el.classList.add("visible");
+      el.innerHTML = "⚠️ <strong>" + t("criticita") + "</strong>: " + items.join(" · ");
     }
+
     function mergeBanner() {
-      aggiornaBanner([
-        ...(window.__criticitaPS || []),
-        ...(window.__criticitaAllerte || []),
-        ...(window.__criticitaPC || []),
-        ...(window.__criticitaInc || [])
-      ]);
+      const items = [];
+      (window.__criticitaPS || []).forEach(function (n) {
+        items.push((lang === "de" ? t("ban_eh") : t("ban_ps")) + " " + n);
+      });
+      (window.__criticitaAllerte || []).forEach(function (n) {
+        items.push(t("ban_allerta") + " " + n);
+      });
+      (window.__criticitaPC || []).forEach(function (titolo) {
+        items.push(t("ban_pc") + ": " + titolo);
+      });
+      const nInc = window.__criticitaInc || 0;
+      if (nInc > 0) {
+        items.push(nInc === 1 ? t("ban_inc") : (t("ban_inc_n") + " (" + nInc + ")"));
+      }
+      aggiornaBanner(items);
     }
 
     async function caricaMeteo() {
       const cont = document.querySelector(".lista-meteo");
       const agg = document.querySelector("#meteo .aggiornamento");
       try {
-        const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it");
+        const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=" + (lang === "de" ? "de" : "it"));
         const dati = await res.json();
         const oggi = dati.today || {}, domani = dati.tomorrow || {};
         const bz = (oggi.stationData || [])[0] || {}, symOggi = bz.symbol || {};
@@ -678,7 +926,7 @@
         cont.innerHTML = `
           <div class="meteo-box">
             <div class="meteo-giorno">
-              <h3>Oggi – ${oggi.title || "—"}</h3>
+              <h3>${t("oggi")} – ${oggi.title || "—"}</h3>
               <div class="meteo-top">
                 ${symOggi.imageUrl ? `<img class="meteo-icona" src="${symOggi.imageUrl}" alt="">` : ""}
                 <div>
@@ -689,7 +937,7 @@
               <div class="meteo-testo">${oggi.weather || ""}</div>
             </div>
             <div class="meteo-giorno">
-              <h3>Domani – ${domani.title || "—"}</h3>
+              <h3>${t("domani")} – ${domani.title || "—"}</h3>
               <div class="meteo-top">
                 ${symD.imageUrl ? `<img class="meteo-icona" src="${symD.imageUrl}" alt="">` : ""}
                 <div>
@@ -701,21 +949,20 @@
             </div>
           </div>
           ${oggi.imageUrl ? `<img class="meteo-mappa" src="${oggi.imageUrl}" alt="Mappa" loading="lazy">` : ""}
-          <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">Prognosi</h3>
+          <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">${t("prognosi")}</h3>
           <div class="settimana">${settimana || "—"}</div>
-          <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">Radar</h3>
+          <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">${t("radar")}</h3>
           <div class="radar-wrap"><iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe></div>
-          <a class="link-ext" href="https://www.rainviewer.com/map.html?loc=46.6,11.3,8" target="_blank" rel="noopener">Apri radar a schermo intero →</a>
-          <a class="link-ext" href="https://meteo.provincia.bz.it" target="_blank" rel="noopener" style="margin-left:12px">Meteo ufficiale →</a>`;
-        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
-      } catch (e) { cont.innerHTML = "<p>Errore meteo.</p>"; }
+          <a class="link-ext" href="https://www.rainviewer.com/map.html?loc=46.6,11.3,8" target="_blank" rel="noopener">${t("radar_full")}</a>
+          <a class="link-ext" href="${lang === "de" ? "https://wetter.provinz.bz.it/de" : "https://meteo.provincia.bz.it"}" target="_blank" rel="noopener" style="margin-left:12px">${t("meteo_uff")}</a>`;
+        agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
+      } catch (e) { cont.innerHTML = "<p>" + t("err_meteo") + "</p>"; }
     }
 
     async function caricaProntoSoccorso() {
       const cont = document.querySelector(".lista-ospedali");
       const agg = document.querySelector("#pronto-soccorso .aggiornamento");
-      const criticita = [];
-      try {
+            try {
         const res = await fetch("https://dati.retecivica.bz.it/services/PS_Queue/json");
         const dati = await res.json();
         const ospedali = {};
@@ -735,51 +982,60 @@
           const critico = o.totale >= SOGLIE.totale || (c["1"] || 0) >= SOGLIE.rossi
             || (c["2"] || 0) >= SOGLIE.arancioni || (c["3"] || 0) >= SOGLIE.gialli
             || (c["4"] || 0) >= SOGLIE.verdi;
-          if (critico) criticita.push("PS " + nome.split("/")[0].trim());
+          if (critico) criticita.push(nomeOspedale(nome));
           let codiciHtml = "";
           ["1","2","3","4","5"].forEach(cod => {
-            const t = TRIAGE[cod];
-            codiciHtml += `<div class="codice ${t.classe}">${t.nome} <span>${c[cod] || 0}</span></div>`;
+            codiciHtml += `<div class="codice ${TRIAGE[cod].classe}">${triageNome(cod)} <span>${c[cod] || 0}</span></div>`;
           });
           html += `<div class="ospedale${critico ? " critico" : ""}">
-            <div class="ospedale-header"><span class="ospedale-nome">${nome}</span>
-            <span class="totale">${o.totale} in attesa</span></div>
+            <div class="ospedale-header"><span class="ospedale-nome">${nomeOspedale(nome)}</span>
+            <span class="totale">${o.totale} ${t("in_attesa")}</span></div>
             <div class="codici">${codiciHtml}</div></div>`;
         });
-        cont.innerHTML = html || "<p>Nessun dato</p>";
-        agg.textContent = ultimo ? "Ultimo aggiornamento: " + new Date(ultimo).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
+        cont.innerHTML = html || "<p>" + t("no_data") + "</p>";
+        agg.textContent = ultimo ? t("last_update") + ": " + new Date(ultimo).toLocaleString(loc()) : t("updated") + ": " + new Date().toLocaleString(loc());
         window.__criticitaPS = criticita; mergeBanner();
-      } catch (e) { cont.innerHTML = "<p>Errore Pronto Soccorso.</p>"; }
+      } catch (e) { cont.innerHTML = "<p>" + t("err_ps") + "</p>"; }
     }
 
     async function caricaFarmacie() {
       const sec = document.getElementById("farmacie");
-      if (!isFarmacieVisibili()) { sec.style.display = "none"; return; }
       sec.style.display = "block";
       const cont = document.querySelector(".lista-farmacie");
+      const agg = document.querySelector("#farmacie .aggiornamento");
+      if (!isFarmacieVisibili()) {
+        cont.innerHTML = `<div class="farm-orari-box">${t("farm_closed_html")}</div>`;
+        if (agg) agg.textContent = t("agg_farm");
+        return;
+      }
       try {
         const res = await fetch("https://daten.buergernetz.bz.it/services/pharmacy/v1/json");
         const dati = await res.json();
         const on = (Array.isArray(dati) ? dati : []).filter(x => x.IS_TURN == 1);
         const filtrati = on.filter(x => {
-          const c = (x.GEME_DESC_I || "").toLowerCase();
-          return COMUNI_FARM.some(n => c.includes(n.toLowerCase()));
+          const c = ((lang === "de" ? (x.GEME_DESC_D || x.GEME_DESC_I) : (x.GEME_DESC_I || x.GEME_DESC_D)) || "").toLowerCase();
+          return COMUNI_FARM.some(n => c.includes(n.toLowerCase())) ||
+            ["bozen","meran","brixen","bruneck","sterzing","schlanders","leifers"].some(n => c.includes(n));
         });
         const lista = filtrati.length ? filtrati : on;
-        if (!lista.length) { cont.innerHTML = "<p>Nessuna farmacia di turno nei comuni principali.</p>"; return; }
+        if (!lista.length) { cont.innerHTML = "<p>" + t("farm_none") + "</p>"; return; }
         let html = "";
         lista.forEach(f => {
-          const nome = f.PHAR_DESC_I || f.PHAR_DESC_D || "Farmacia";
+          const nome = (lang === "de" ? (f.PHAR_DESC_D || f.PHAR_DESC_I) : (f.PHAR_DESC_I || f.PHAR_DESC_D)) || t("farmacia");
+          const comune = lang === "de" ? (f.GEME_DESC_D || f.GEME_DESC_I || "") : (f.GEME_DESC_I || f.GEME_DESC_D || "");
+          const indir = lang === "de" ? (f.PHAR_ADRESS_D || f.PHAR_ADRESS_I || "") : (f.PHAR_ADRESS_I || f.PHAR_ADRESS_D || "");
+          const note = lang === "de" ? (f.TURN_NOTES_D || f.TURN_NOTES_I || "") : (f.TURN_NOTES_I || f.TURN_NOTES_D || "");
           const tel = (f.PHAR_PHONE || "").toString().trim();
           const telHref = tel ? ("tel:" + tel.replace(/[^\d+]/g, "")) : "";
           html += `<div class="farmacia"><div class="farmacia-nome">${nome}</div>
-            <div class="farmacia-meta">${f.GEME_DESC_I || ""}${f.PHAR_ADRESS_I ? " · " + f.PHAR_ADRESS_I : ""}</div>
+            <div class="farmacia-meta">${comune}${indir ? " · " + indir : ""}</div>
             ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE ? `<div class="farmacia-meta">🕐 ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE}</div>` : ""}
-            ${f.TURN_NOTES_I ? `<div class="farmacia-meta">${f.TURN_NOTES_I}</div>` : ""}
-            ${telHref ? `<a class="btn-chiama" href="${telHref}">☎ Chiama ${tel}</a>` : ""}</div>`;
+            ${note ? `<div class="farmacia-meta">${note}</div>` : ""}
+            ${telHref ? `<a class="btn-chiama" href="${telHref}">☎ Call ${tel}</a>` : ""}</div>`;
         });
         cont.innerHTML = html;
-      } catch (e) { cont.innerHTML = "<p>Errore farmacie.</p>"; }
+        if (agg) agg.textContent = t("agg_farm") + " · " + new Date().toLocaleString(lang === "de" ? "de-DE" : "it-IT");
+      } catch (e) { cont.innerHTML = "<p>" + t("farm_err") + "</p>"; }
     }
 
     async function caricaParcheggi() {
@@ -842,25 +1098,25 @@
           if (!by[mun]) by[mun] = [];
           by[mun].push({ name: nome, free, cap, occ, addr, phone, layout, charging, surveillance, coord: s.coord });
         });
-        const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, "it"));
+        const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, loc()));
         if (!nomi.length) {
-          cont.innerHTML = "<p style='padding:12px'>Nessun dato parcheggi disponibile.</p>";
-          agg.textContent = "Nessun aggiornamento";
+          cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
+          agg.textContent = t("park_no_upd");
           return;
         }
-        const layoutIt = { underground: "interrato", covered: "coperto", openSpace: "aperto", multilevel: "multipiano" };
+        const layoutIt = { underground: t("layout_underground"), covered: t("layout_covered"), openSpace: t("layout_open"), multilevel: t("layout_multi") };
         let html = "";
         nomi.forEach(mun => {
           html += `<div class="park-comune"><h3>${mun}</h3>`;
-          by[mun].sort((a, b) => (a.name || "").localeCompare(b.name || "", "it")).forEach(p => {
+          by[mun].sort((a, b) => (a.name || "").localeCompare(b.name || "", loc())).forEach(p => {
             let posti = "";
             if (p.free != null && p.cap != null) {
               const pieno = p.free <= 0;
-              posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} liberi / ${p.cap}</span>`;
+              posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
             } else if (p.free != null) {
-              posti = `<span class="park-free">${p.free} liberi</span>`;
+              posti = `<span class="park-free">${p.free} ${t("park_free")}</span>`;
             } else if (p.cap != null) {
-              posti = `<span class="park-free">${p.cap} posti</span>`;
+              posti = `<span class="park-free">${p.cap} ${t("park_posti")}</span>`;
             }
             let meta = [];
             if (p.addr) meta.push("📍 " + p.addr);
@@ -868,14 +1124,14 @@
             let tags = [];
             if (p.layout && layoutIt[p.layout]) tags.push(layoutIt[p.layout]);
             else if (p.layout) tags.push(p.layout);
-            if (p.charging) tags.push("ricarica EV");
-            if (p.surveillance) tags.push("videosorveglianza");
+            if (p.charging) tags.push(t("park_ev"));
+            if (p.surveillance) tags.push(t("park_surv"));
             let maps = "";
             if (p.coord && p.coord.y != null && p.coord.x != null) {
-              maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">mappa</a>`;
+              maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">${t("park_map")}</a>`;
             }
             html += `<div class="park-item">
-              <div class="park-item-top"><span class="park-nome">${p.name || "Parcheggio"}${maps}</span>${posti}</div>
+              <div class="park-item-top"><span class="park-nome">${p.name || t("park_name")}${maps}</span>${posti}</div>
               ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
               ${tags.length ? `<div class="park-tags">${tags.map(t => `<span class="park-tag">${t}</span>`).join("")}</div>` : ""}
             </div>`;
@@ -900,7 +1156,7 @@
       try {
         const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
         const dati = await res.json();
-        if (!Array.isArray(dati) || !dati.length) { cont.innerHTML = "<p style='padding:12px'>Nessun evento.</p>"; return; }
+        if (!Array.isArray(dati) || !dati.length) { cont.innerHTML = "<p style='padding:12px'>" + t("via_none") + "</p>"; return; }
         function priorita(ev) {
           if (isIncidente(ev)) return 0;
           if (isCoda(ev)) return 1;
@@ -929,24 +1185,30 @@
           const inc = isIncidente(ev);
           const coda = !inc && isCoda(ev);
           const chius = !inc && !coda && tipo === "SPERRE";
-          if (inc) { nInc++; criticita.push("Incidente"); }
+          if (inc) nInc++;
           if (coda) nCoda++;
           if (chius) nChius++;
           let cls = "", pref = "";
           if (inc) { cls = "incidente"; pref = "💥 "; }
           else if (coda) { cls = "coda"; pref = "🚗 "; }
           else if (chius) { cls = "chiusura"; pref = "🚫 "; }
-          const strada = [ev.messageStreetNr, ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt].filter(Boolean).join(" – ");
+          const stradaDesc = lang === "de"
+            ? (ev.messageStreetInternetDescDe || ev.messageStreetWapDescDe || ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt)
+            : (ev.messageStreetInternetDescIt || ev.messageStreetWapDescIt || ev.messageStreetInternetDescDe);
+          const strada = [ev.messageStreetNr, stradaDesc].filter(Boolean).join(" – ");
+          const grad = lang === "de" ? (ev.messageGradDescDe || ev.messageGradDescIt || "") : (ev.messageGradDescIt || ev.messageGradDescDe || "");
+          const zona = lang === "de" ? (ev.messageZoneDescDe || ev.messageZoneDescIt || "") : (ev.messageZoneDescIt || ev.messageZoneDescDe || "");
+          const testoEvnt = lang === "de" ? (ev.placeDe || ev.placeIt || "") : (ev.placeIt || ev.placeDe || "");
           html += `<div class="evento ${cls}">
-            <div class="evento-titolo">${pref}${strada || "Evento"}</div>
-            <div class="evento-meta">${ev.messageGradDescIt || ""}${ev.messageZoneDescIt ? " · " + ev.messageZoneDescIt : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
-            <div class="evento-testo">${ev.placeIt || ""}</div></div>`;
+            <div class="evento-titolo">${pref}${strada || (lang === "de" ? "Ereignis" : "Evento")}</div>
+            <div class="evento-meta">${grad}${zona ? " · " + zona : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
+            <div class="evento-testo">${testoEvnt}</div></div>`;
         });
-        cont.innerHTML = html || "<p style='padding:12px'>Nessun incidente, coda o chiusura attiva oggi.</p>";
-        conteggio.textContent = `${nInc + nCoda + nChius} eventi · ${nInc} incidenti · ${nCoda} code · ${nChius} chiusure (attive oggi)`;
+        cont.innerHTML = html || "<p style='padding:12px'>" + t("via_empty") + "</p>";
+        conteggio.textContent = `${nInc + nCoda + nChius} ${t("via_count")} · ${nInc} ${t("via_inc")} · ${nCoda} ${t("via_code")} · ${nChius} ${t("via_chius")}`;
         const pub = dati[0]?.publishDateTime;
-        agg.textContent = pub ? "Bollettino: " + new Date(pub).toLocaleString("it-IT") : "Aggiornato: " + new Date().toLocaleString("it-IT");
-        window.__criticitaInc = [...new Set(criticita)];
+        agg.textContent = pub ? (lang==="de"?"Bulletin: ":"Bollettino: ") + new Date(pub).toLocaleString(loc()) : t("updated") + ": " + new Date().toLocaleString(loc());
+        window.__criticitaInc = nInc;
         mergeBanner();
       } catch (e) { cont.innerHTML = "<p style='padding:12px'>Errore viabilità.</p>"; }
     }
@@ -956,7 +1218,8 @@
       const cont = document.querySelector(".lista-allarmi-pc");
       const agg = document.querySelector("#allarmi-pc .aggiornamento");
       try {
-        const res = await fetch("https://static-weather.services.siag.it/sys/BIS_Zivilschutz_I.json?_=" + Date.now());
+        const file = lang === "de" ? "BIS_Zivilschutz_D.json" : "BIS_Zivilschutz_I.json";
+        const res = await fetch("https://static-weather.services.siag.it/sys/" + file + "?_=" + Date.now());
         const buf = await res.arrayBuffer();
         let text;
         const u8 = new Uint8Array(buf);
@@ -973,8 +1236,8 @@
         const attivi = dati.filter(a => Number(a.ARTC_STATUS) === 16 || Number(a.ARTC_STATUS) === 16);
         const lista = attivi.length ? attivi : dati.filter(a => a && (a.ARTC_TITLE || a.ARTC_LCONTENT));
         if (!lista.length) {
-          cont.innerHTML = `<div class="pc-ok">Al momento non c'è alcun avviso di protezione civile.</div>`;
-          agg.textContent = "Nessun avviso · " + new Date().toLocaleString("it-IT");
+          cont.innerHTML = `<div class="pc-ok">${t("pc_none")}</div>`;
+          agg.textContent = t("pc_none_agg") + " · " + new Date().toLocaleString(loc());
           window.__criticitaPC = [];
           mergeBanner();
           return;
@@ -987,27 +1250,27 @@
         let html = "";
         const criticita = [];
         lista.forEach(a => {
-          const titolo = strip(a.ARTC_TITLE) || "Comunicato di Protezione Civile";
+          const titolo = strip(a.ARTC_TITLE) || t("pc_title_fallback");
           const sub = strip(a.ARTC_SUBTITLE);
           const testo = strip(a.ARTC_LCONTENT);
           const data = (a.ARTC_DATE || "").replace("T00:00", "").replace(" 00:00:00", "");
           const ora = a.ARTC_TIME || "";
           const quando = [data, ora].filter(Boolean).join(", ");
-          criticita.push("Allarme PC: " + titolo.slice(0, 60));
+          criticita.push(titolo.slice(0, 60));
           html += `<div class="pc-alert">
             ${quando ? `<div class="pc-data">🕒 ${quando}</div>` : ""}
             <h3>${titolo}</h3>
             ${sub ? `<div class="pc-sub">${sub}</div>` : ""}
             ${testo ? `<div class="pc-testo">${testo}</div>` : ""}
-            <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Leggi sul sito ufficiale →</a>
+            <a class="link-ext" href="${lang === "de" ? "https://allerta-protezione-civile.provincia.bz.it/de/home" : "https://allerta-protezione-civile.provincia.bz.it/it/home"}" target="_blank" rel="noopener">${t("pc_read")}</a>
           </div>`;
         });
         cont.innerHTML = html;
-        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+        agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
         window.__criticitaPC = criticita;
         mergeBanner();
       } catch (e) {
-        cont.innerHTML = `<p>Errore caricamento. <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener">Apri portale ufficiale →</a></p>`;
+        cont.innerHTML = `<p>${t("err_pc")} <a class="link-ext" href="${lang === "de" ? "https://allerta-protezione-civile.provincia.bz.it/de/home" : "https://allerta-protezione-civile.provincia.bz.it/it/home"}" target="_blank" rel="noopener">${t("pc_open")}</a></p>`;
       }
     }
 
@@ -1018,7 +1281,7 @@
       try {
         const res = await fetch(`https://allertameteo.app/api/alert/${COMUNI.join(",")}`);
         const dati = await res.json();
-        if (!dati.success) { cont.innerHTML = "<p>Errore allerte.</p>"; return; }
+        if (!dati.success) { cont.innerHTML = "<p>" + t("err_allerte") + "</p>"; return; }
         let data = dati.data;
         if (data && data.comune) data = { [data.comune]: data };
         let html = "";
@@ -1026,16 +1289,18 @@
           const info = data[nome]; if (!info) continue;
           const oggi = info.oggi?.allerta || {};
           const colore = (oggi.colore || "verde").toLowerCase();
-          if (["gialla","arancione","rossa"].includes(colore)) criticita.push("Allerta " + (info.comune || nome));
+          if (["gialla","arancione","rossa"].includes(colore)) criticita.push(info.comune || nome);
+          const labelCol = coloreAllertaLabel(colore);
+          const desc = traduciAllertaTesto(oggi.descrizione || "—");
           html += `<div class="riga-allerta"><div class="allerta-header">
-            <span class="badge" style="background:${coloreLivello(colore)}">${colore}</span>
+            <span class="badge" style="background:${coloreLivello(colore)}">${labelCol}</span>
             <strong>${info.comune || nome}</strong></div>
-            <div class="allerta-dettaglio">${oggi.descrizione || "—"} · Zona: ${info.zona || "—"}</div></div>`;
+            <div class="allerta-dettaglio">${desc} · ${t("zona")}: ${info.zona || "—"}</div></div>`;
         }
-        cont.innerHTML = html || `<div class="nessuna-allerta">Nessuna allerta attiva</div>`;
-        agg.textContent = "Aggiornato: " + new Date().toLocaleString("it-IT");
+        cont.innerHTML = html || `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
+        agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
         window.__criticitaAllerte = criticita; mergeBanner();
-      } catch (e) { cont.innerHTML = "<p>Errore connessione.</p>"; }
+      } catch (e) { cont.innerHTML = "<p>" + t("err_conn") + "</p>"; }
     }
 
     async function fetchAEDFeatures() {
@@ -1111,7 +1376,7 @@
           const ia = COMUNI_AED.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
           const ib = COMUNI_AED.findIndex(c => b.toLowerCase().includes(c.toLowerCase()));
           if (ia >= 0 && ib < 0) return -1; if (ib >= 0 && ia < 0) return 1;
-          if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, "it");
+          if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, loc());
         });
         let html = "";
         let totale = 0;
@@ -1123,7 +1388,7 @@
             let riga = it.via || "Indirizzo non disponibile";
             if (it.desc) riga += " – " + it.desc;
             const maps = (it.lat != null && it.lon != null)
-              ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">mappa</a>`
+              ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">${t("park_map")}</a>`
               : "";
             html += `<div class="aed-item">${riga}${maps}</div>`;
           });
@@ -1139,6 +1404,10 @@
     }
 
     document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll("[data-set-lang]").forEach(btn => {
+        btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
+      });
+      applyLang();
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
       caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
     });
