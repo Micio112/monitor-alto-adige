@@ -206,24 +206,6 @@ def daily_flag(name):
     return False
 
 
-# ---------- destinatari / invio ----------
-def prendi_destinatari():
-    ids = []
-    if CHAT_ID:
-        ids.append(str(CHAT_ID))
-    if SUBS_URL and SUBS_KEY:
-        try:
-            r = requests.get(SUBS_URL, params={"key": SUBS_KEY}, timeout=15)
-            if r.ok:
-                for u in r.json() if isinstance(r.json(), list) else []:
-                    cid = str(u.get("id") if isinstance(u, dict) else u).strip()
-                    if cid and cid not in ids:
-                        ids.append(cid)
-        except Exception as e:
-            print("Errore iscritti:", e)
-    print("Destinatari:", ids)
-    return ids
-
 
 def _spezza_messaggio(testo, max_len=3500):
     """Telegram accetta max 4096 caratteri: spezza su a-capo."""
@@ -231,11 +213,12 @@ def _spezza_messaggio(testo, max_len=3500):
     if len(testo) <= max_len:
         return [testo] if testo else []
     parti = []
+    nl = chr(10)
     while testo:
         if len(testo) <= max_len:
             parti.append(testo)
             break
-        taglio = testo.rfind("\n", 0, max_len)
+        taglio = testo.rfind(nl, 0, max_len)
         if taglio < max_len // 3:
             taglio = max_len
         pezzo = testo[:taglio].rstrip()
@@ -245,31 +228,78 @@ def _spezza_messaggio(testo, max_len=3500):
     return parti
 
 
-def invia_messaggio(testo):
+def prendi_destinatari():
+    """Lista di dict {id, lang} (lang: it|de)."""
+    by_id = {}
+    if CHAT_ID:
+        by_id[str(CHAT_ID)] = {"id": str(CHAT_ID), "lang": "it"}
+    if SUBS_URL and SUBS_KEY:
+        try:
+            r = requests.get(SUBS_URL, params={"key": SUBS_KEY}, timeout=15)
+            if r.ok:
+                for u in r.json() if isinstance(r.json(), list) else []:
+                    if isinstance(u, dict):
+                        cid = str(u.get("id") or "").strip()
+                        lang = "de" if str(u.get("lang") or "").lower() == "de" else "it"
+                    else:
+                        cid = str(u).strip()
+                        lang = "it"
+                    if cid:
+                        by_id[cid] = {"id": cid, "lang": lang}
+        except Exception as e:
+            print("Errore iscritti:", e)
+    dest = list(by_id.values())
+    print("Destinatari:", [(d["id"], d["lang"]) for d in dest])
+    return dest
+
+
+def nome_ospedale(nome, lang="it"):
+    if not nome:
+        return nome
+    if "/" in str(nome):
+        parts = [x.strip() for x in str(nome).split("/")]
+        if lang == "de" and len(parts) > 1:
+            return parts[1]
+        return parts[0]
+    return nome
+
+
+def _append_site(s):
+    s = s or ""
+    if SITE_URL and SITE_URL not in s:
+        return s.rstrip() + "\n\n🌐 " + SITE_URL
+    return s
+
+
+def invia_messaggio(testo, testo_de=None):
+    """Invia IT agli utenti it, DE (o IT) agli utenti de.
+    testo può essere str oppure dict {"it":..., "de":...}.
+    """
     if not TOKEN:
         print("Token mancante")
         return False
+    if isinstance(testo, dict):
+        testo_it = testo.get("it") or testo.get("de") or ""
+        testo_de = testo.get("de") or testo.get("it") or ""
+    else:
+        testo_it = testo or ""
+        if testo_de is None:
+            testo_de = testo_it
     dest = prendi_destinatari()
     if not dest:
         print("Nessun destinatario")
         return False
-    # Link sito in fondo a ogni messaggio (una sola volta)
-    if SITE_URL and SITE_URL not in (testo or ""):
-        testo = (testo or "").rstrip() + f"\n\n🌐 {SITE_URL}"
-    parti = _spezza_messaggio(testo)
-    if not parti:
-        print("Messaggio vuoto")
-        return False
-    if len(parti) > 1:
-        print(f"Messaggio spezzato in {len(parti)} parti ({len(testo)} caratteri)")
+    testo_it = _append_site(testo_it)
+    testo_de = _append_site(testo_de)
     ok = True
-    for cid in dest:
-        for i, pezzo in enumerate(parti):
+    for d in dest:
+        body = testo_de if d.get("lang") == "de" else testo_it
+        for pezzo in _spezza_messaggio(body):
             try:
                 r = requests.post(
                     f"https://api.telegram.org/bot{TOKEN}/sendMessage",
                     data={
-                        "chat_id": cid,
+                        "chat_id": d["id"],
                         "text": pezzo,
                         "parse_mode": "HTML",
                         "disable_web_page_preview": True,
@@ -278,13 +308,12 @@ def invia_messaggio(testo):
                 )
                 if not r.ok:
                     ok = False
-                    print("Errore invio", cid, f"parte {i+1}/{len(parti)}", r.text[:300])
-                    # ritenta senza HTML se parse error
+                    print("Errore invio", d["id"], r.text[:250])
                     if "parse" in (r.text or "").lower() or r.status_code == 400:
                         r2 = requests.post(
                             f"https://api.telegram.org/bot{TOKEN}/sendMessage",
                             data={
-                                "chat_id": cid,
+                                "chat_id": d["id"],
                                 "text": pezzo.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", ""),
                                 "disable_web_page_preview": True,
                             },
@@ -292,15 +321,60 @@ def invia_messaggio(testo):
                         )
                         if r2.ok:
                             ok = True
-                            print("Inviato (senza HTML) a", cid, f"parte {i+1}")
-                        else:
-                            print("Errore anche senza HTML", cid, r2.text[:200])
-                else:
-                    print("Inviato a", cid, f"parte {i+1}/{len(parti)}")
             except Exception as e:
                 ok = False
-                print("Errore", cid, e)
+                print("Eccezione invio", d["id"], e)
     return ok
+
+
+def invia_pacchetto(messaggi):
+    """messaggi: lista di str o dict {it, de}."""
+    if not messaggi:
+        return False
+    dest = prendi_destinatari()
+    if not dest:
+        return False
+    ok_any = False
+    for lang in ("it", "de"):
+        ids = [d["id"] for d in dest if d.get("lang", "it") == lang]
+        if not ids:
+            continue
+        parti = []
+        for m in messaggi:
+            if isinstance(m, dict):
+                parti.append(m.get(lang) or m.get("it") or "")
+            else:
+                parti.append(m)
+        header = (
+            f"🔔 <b>Monitor Südtirol</b>\n<i>{ora_str()}</i>\n\n"
+            if lang == "de"
+            else f"🔔 <b>Monitor Alto Adige</b>\n<i>{ora_str()}</i>\n\n"
+        )
+        testo = header + "\n\n————————\n\n".join(p for p in parti if p)
+        body = _append_site(testo)
+        ok = True
+        for cid in ids:
+            for pezzo in _spezza_messaggio(body):
+                try:
+                    r = requests.post(
+                        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                        data={
+                            "chat_id": cid,
+                            "text": pezzo,
+                            "parse_mode": "HTML",
+                            "disable_web_page_preview": True,
+                        },
+                        timeout=20,
+                    )
+                    if not r.ok:
+                        ok = False
+                        print("Errore invio", cid, r.text[:200])
+                except Exception as e:
+                    ok = False
+                    print("Eccezione invio", cid, e)
+        if ok:
+            ok_any = True
+    return ok_any
 
 
 # ========== PRONTO SOCCORSO ==========
@@ -323,10 +397,24 @@ def prendi_pronto_soccorso():
         return {}
 
 
-def formatta_ospedale(nome, d):
+def formatta_ospedale(nome, d, lang="it"):
     c = d["codici"]
+    n = nome_ospedale(nome, lang)
+    if lang == "de":
+        return "\n".join([
+            f"🏥 <b>EH {n}</b>",
+            f"Gesamt wartend: <b>{d['totale']}</b>",
+            "",
+            f"{CERCHI['1']} Rot: <b>{c['1']}</b>",
+            f"{CERCHI['2']} Orange: <b>{c['2']}</b>",
+            f"{CERCHI['3']} Gelb: <b>{c['3']}</b>",
+            f"{CERCHI['4']} Grün: <b>{c['4']}</b>",
+            f"{CERCHI['5']} Blau: <b>{c['5']}</b>",
+            "",
+            "⏳ <b>Lange Wartezeiten</b>",
+        ])
     return "\n".join([
-        f"🏥 <b>{nome}</b>",
+        f"🏥 <b>PS {n}</b>",
         f"Totale in attesa: <b>{d['totale']}</b>",
         "",
         f"{CERCHI['1']} Rosso: <b>{c['1']}</b>",
@@ -345,7 +433,7 @@ def controlla_ps():
     for nome, d in prendi_pronto_soccorso().items():
         c = d["codici"]
         motivi = []
-        tipi = []  # chiavi stabili senza numeri (per anti-spam)
+        tipi = []
         if d["totale"] >= SOGLIA_TOTALE:
             motivi.append(f"totale ≥ {SOGLIA_TOTALE} ({d['totale']})")
             tipi.append("totale")
@@ -363,18 +451,28 @@ def controlla_ps():
             tipi.append("verdi")
         if not motivi:
             continue
-        # 1 notifica all'ora per stesso ospedale + stessi tipi di soglia
         key = "ps|" + nome + "|" + "+".join(sorted(tipi))
         if already_sent(key, ttl_hours=1):
             print(f"PS saltato (già inviato <1h): {nome} ({', '.join(tipi)})")
             continue
-        testo = formatta_ospedale(nome, d)
-        testo += "\n⚠️ Motivo: " + ", ".join(motivi)
-        messaggi.append(testo)
+        motivi_de = []
+        if "totale" in tipi:
+            motivi_de.append(f"Gesamt ≥ {SOGLIA_TOTALE} ({d['totale']})")
+        if "rossi" in tipi:
+            motivi_de.append(f"Rot ≥ {SOGLIA_ROSSI} ({c['1']})")
+        if "arancioni" in tipi:
+            motivi_de.append(f"Orange ≥ {SOGLIA_ARANCIONI} ({c['2']})")
+        if "gialli" in tipi:
+            motivi_de.append(f"Gelb ≥ {SOGLIA_GIALLI} ({c['3']})")
+        if "verdi" in tipi:
+            motivi_de.append(f"Grün ≥ {SOGLIA_VERDI} ({c['4']})")
+        testo_it = formatta_ospedale(nome, d, "it") + "\n⚠️ Motivo: " + ", ".join(motivi)
+        testo_de = formatta_ospedale(nome, d, "de") + "\n⚠️ Grund: " + ", ".join(motivi_de)
+        messaggi.append({"it": testo_it, "de": testo_de})
     return messaggi
 
 
-# ========== ALLERTE PC NAZIONALI (1 volta per evento) ==========
+# ========== ALLERTE METEO (1 volta per evento) ==========
 def prendi_allerte_nazionali():
     try:
         url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
@@ -385,6 +483,7 @@ def prendi_allerte_nazionali():
         if isinstance(data, dict) and "comune" in data:
             data = {data["comune"]: data}
         out = []
+        nl = chr(10)
         for nome, info in data.items():
             if not info:
                 continue
@@ -396,12 +495,23 @@ def prendi_allerte_nazionali():
             if already_sent(key, ttl_hours=20):
                 continue
             emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⚠️")
-            out.append(
-                f"{emoji} <b>Allerta {colore.capitalize()}</b>\n"
-                f"Comune: {info.get('comune', nome)}\n"
-                f"{oggi.get('descrizione', '')}\n"
-                f"Zona: {info.get('zona', '—')}"
+            desc = oggi.get("descrizione", "") or ""
+            comune = info.get("comune", nome)
+            zona = info.get("zona", "—")
+            col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
+            it = (
+                f"{emoji} <b>Allerta {colore.capitalize()}</b>" + nl
+                + f"Comune: {comune}" + nl
+                + f"{desc}" + nl
+                + f"Zona: {zona}"
             )
+            de = (
+                f"{emoji} <b>Wetterwarnung {col_de}</b>" + nl
+                + f"Gemeinde: {comune}" + nl
+                + f"{desc}" + nl
+                + f"Zone: {zona}"
+            )
+            out.append({"it": it, "de": de})
         return out
     except Exception as e:
         print("Errore allerte:", e)
@@ -440,68 +550,82 @@ def controlla_temporali():
             key = f"temporale-{comune}-{colore}-{date.today()}"
             if already_sent(key, ttl_hours=12):
                 continue
-            messaggi.append(
-                f"⛈️ <b>Temporale / maltempo</b>\n"
-                f"Comune: <b>{comune}</b>\n"
-                f"Livello: {colore.capitalize()}\n"
-                f"{allerta.get('descrizione') or dettagli.get('temporali') or 'Temporali previsti'}"
-            )
+            desc = allerta.get("descrizione") or dettagli.get("temporali") or ""
+            col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot", "verde": "Grün"}.get(colore, colore)
+            if not desc:
+                desc_it = "Temporali previsti"
+                desc_de = "Gewitter erwartet"
+            else:
+                desc_it = desc
+                desc_de = desc
+            nl = chr(10)
+            messaggi.append({
+                "it": (
+                    f"⛈️ <b>Temporale / maltempo</b>{nl}"
+                    f"Comune: <b>{comune}</b>{nl}"
+                    f"Livello: {colore.capitalize()}{nl}"
+                    f"{desc_it}"
+                ),
+                "de": (
+                    f"⛈️ <b>Gewitter / Unwetter</b>{nl}"
+                    f"Gemeinde: <b>{comune}</b>{nl}"
+                    f"Stufe: {col_de}{nl}"
+                    f"{desc_de}"
+                ),
+            })
     except Exception as e:
         print("Errore temporali:", e)
     return messaggi
 
 
 # ========== METEO ==========
-def formatta_stazioni(station_data):
+def formatta_stazioni(station_data, lang="it"):
     if not station_data:
         return ""
+    nomi = STAZIONI_NOMI_DE if lang == "de" else STAZIONI_NOMI
+    label = "Station" if lang == "de" else "Stazione"
     righe = []
     for i, st in enumerate(station_data):
-        nome = STAZIONI_NOMI[i] if i < len(STAZIONI_NOMI) else f"Stazione {i+1}"
+        nome = nomi[i] if i < len(nomi) else f"{label} {i+1}"
         sym = (st.get("symbol") or {}).get("description", "—")
         tmin, tmax = st.get("min"), st.get("max")
         if tmin is not None and tmax is not None:
             righe.append(f"• <b>{nome}</b>: {sym} · {tmin}° / {tmax}°")
         else:
             righe.append(f"• <b>{nome}</b>: {sym}")
-    return "\n".join(righe)
+    return chr(10).join(righe)
 
 
-def prendi_bollettino_meteo(quando="mattina"):
-    """quando='mattina' → oggi + prognosi giorni; quando='sera' → solo domani."""
-    try:
-        dati = requests.get(
-            "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it", timeout=15
-        ).json()
-        oggi = dati.get("today", {})
-        domani = dati.get("tomorrow", {})
-
+def _bollettino_meteo_lang(dati, quando, lang="it"):
+    nl = chr(10)
+    oggi = dati.get("today", {})
+    domani = dati.get("tomorrow", {})
+    if lang == "de":
+        link = "https://wetter.provinz.bz.it/de"
         if quando in ("sera", "domani", "evening"):
             testo = (
-                f"🌙 <b>Meteo di domani – Alto Adige</b>\n"
-                f"<i>{ora_str()}</i>\n\n"
-                f"<b>{domani.get('title', 'Domani')}</b>\n"
-                f"{domani.get('weather', '')}\n{domani.get('temperatures', '')}\n"
+                f"🌙 <b>Wetter morgen – Südtirol</b>{nl}"
+                f"<i>{ora_str()}</i>{nl}{nl}"
+                f"<b>{domani.get('title', 'Morgen')}</b>{nl}"
+                f"{domani.get('weather', '')}{nl}{domani.get('temperatures', '')}{nl}"
             )
             if domani.get("stationData"):
-                testo += "\n📍 <b>Comuni</b>\n" + formatta_stazioni(domani["stationData"]) + "\n"
-            testo += "\n🔗 https://meteo.provincia.bz.it"
+                testo += f"{nl}📍 <b>Gemeinden</b>{nl}" + formatta_stazioni(domani["stationData"], "de") + nl
+            testo += f"{nl}🔗 {link}"
             return testo
-
-        # Mattina: solo oggi + prognostico prossimi giorni (niente blocco "domani" completo)
         testo = (
-            f"🌤 <b>Bollettino Meteo Alto Adige</b>\n"
-            f"<i>{ora_str()}</i>\n\n"
-            f"<b>Oggi – {oggi.get('title', '—')}</b>\n"
-            f"{oggi.get('weather', '')}\n{oggi.get('temperatures', '')}\n"
+            f"🌤 <b>Wetterbericht Südtirol</b>{nl}"
+            f"<i>{ora_str()}</i>{nl}{nl}"
+            f"<b>Heute – {oggi.get('title', '—')}</b>{nl}"
+            f"{oggi.get('weather', '')}{nl}{oggi.get('temperatures', '')}{nl}"
         )
         if oggi.get("stationData"):
-            testo += "\n📍 <b>Comuni (oggi)</b>\n" + formatta_stazioni(oggi["stationData"]) + "\n"
+            testo += f"{nl}📍 <b>Gemeinden (heute)</b>{nl}" + formatta_stazioni(oggi["stationData"], "de") + nl
         forecasts = dati.get("dayForecasts") or []
         if forecasts:
-            testo += "\n<b>Prognosi prossimi giorni</b>\n"
+            testo += f"{nl}<b>Prognose nächste Tage</b>{nl}"
             for g in forecasts:
-                giorno = nome_giorno(g.get("date"))
+                giorno = nome_giorno(g.get("date"), "de")
                 data_fmt = format_data_it(g.get("date"))
                 etichetta = giorno if giorno != "—" else data_fmt
                 if data_fmt and data_fmt not in etichetta:
@@ -511,10 +635,67 @@ def prendi_bollettino_meteo(quando="mattina"):
                 testo += (
                     f"• <b>{etichetta}</b>: {desc} "
                     f"(max {tmax.get('min', '?')}–{tmax.get('max', '?')}° / "
-                    f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)\n"
+                    f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)" + nl
                 )
-        testo += "\n🔗 https://meteo.provincia.bz.it"
+        testo += f"{nl}🔗 {link}"
         return testo
+    # IT
+    link = "https://meteo.provincia.bz.it"
+    if quando in ("sera", "domani", "evening"):
+        testo = (
+            f"🌙 <b>Meteo di domani – Alto Adige</b>{nl}"
+            f"<i>{ora_str()}</i>{nl}{nl}"
+            f"<b>{domani.get('title', 'Domani')}</b>{nl}"
+            f"{domani.get('weather', '')}{nl}{domani.get('temperatures', '')}{nl}"
+        )
+        if domani.get("stationData"):
+            testo += f"{nl}📍 <b>Comuni</b>{nl}" + formatta_stazioni(domani["stationData"], "it") + nl
+        testo += f"{nl}🔗 {link}"
+        return testo
+    testo = (
+        f"🌤 <b>Bollettino Meteo Alto Adige</b>{nl}"
+        f"<i>{ora_str()}</i>{nl}{nl}"
+        f"<b>Oggi – {oggi.get('title', '—')}</b>{nl}"
+        f"{oggi.get('weather', '')}{nl}{oggi.get('temperatures', '')}{nl}"
+    )
+    if oggi.get("stationData"):
+        testo += f"{nl}📍 <b>Comuni (oggi)</b>{nl}" + formatta_stazioni(oggi["stationData"], "it") + nl
+    forecasts = dati.get("dayForecasts") or []
+    if forecasts:
+        testo += f"{nl}<b>Prognosi prossimi giorni</b>{nl}"
+        for g in forecasts:
+            giorno = nome_giorno(g.get("date"), "it")
+            data_fmt = format_data_it(g.get("date"))
+            etichetta = giorno if giorno != "—" else data_fmt
+            if data_fmt and data_fmt not in etichetta:
+                etichetta = f"{giorno} {data_fmt}".strip()
+            desc = (g.get("symbol") or {}).get("description", "—")
+            tmax, tmin = g.get("tempMax") or {}, g.get("tempMin") or {}
+            testo += (
+                f"• <b>{etichetta}</b>: {desc} "
+                f"(max {tmax.get('min', '?')}–{tmax.get('max', '?')}° / "
+                f"min {tmin.get('min', '?')}–{tmin.get('max', '?')}°)" + nl
+            )
+    testo += f"{nl}🔗 {link}"
+    return testo
+
+
+def prendi_bollettino_meteo(quando="mattina"):
+    """Restituisce dict {it, de} oppure None."""
+    try:
+        dati_it = requests.get(
+            "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it", timeout=15
+        ).json()
+        try:
+            dati_de = requests.get(
+                "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=de", timeout=15
+            ).json()
+        except Exception:
+            dati_de = dati_it
+        return {
+            "it": _bollettino_meteo_lang(dati_it, quando, "it"),
+            "de": _bollettino_meteo_lang(dati_de, quando, "de"),
+        }
     except Exception as e:
         print("Errore meteo:", e)
         return None
@@ -532,14 +713,22 @@ def prendi_viabilita():
         return []
 
 
-def formatta_evento_viabilita(ev):
-    strada = " ".join(filter(None, [
-        ev.get("messageStreetNr"),
-        ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt"),
-    ]))
-    zona = ev.get("messageZoneDescIt") or ""
-    grad = ev.get("messageGradDescIt") or ""
-    testo = (ev.get("placeIt") or ev.get("descriptionIt") or "").strip()
+def formatta_evento_viabilita(ev, lang="it"):
+    if lang == "de":
+        strada_desc = ev.get("messageStreetInternetDescDe") or ev.get("messageStreetWapDescDe") or ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt")
+        zona = ev.get("messageZoneDescDe") or ev.get("messageZoneDescIt") or ""
+        grad = ev.get("messageGradDescDe") or ev.get("messageGradDescIt") or ""
+        testo = (ev.get("placeDe") or ev.get("descriptionDe") or ev.get("placeIt") or ev.get("descriptionIt") or "").strip()
+        dal_lab, al_lab, fino = "Von", "bis", "Bis"
+        evento = "Ereignis"
+    else:
+        strada_desc = ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt") or ev.get("messageStreetInternetDescDe")
+        zona = ev.get("messageZoneDescIt") or ""
+        grad = ev.get("messageGradDescIt") or ""
+        testo = (ev.get("placeIt") or ev.get("descriptionIt") or "").strip()
+        dal_lab, al_lab, fino = "Dal", "al", "Fino al"
+        evento = "Evento"
+    strada = " ".join(filter(None, [ev.get("messageStreetNr"), strada_desc]))
     dal = format_data_it(ev.get("beginDate") or "")
     al = format_data_it(ev.get("endDate") or "")
     tipo = (ev.get("subTycodeValue") or "").upper()
@@ -550,18 +739,19 @@ def formatta_evento_viabilita(ev):
         emoji = "💥"
     periodo = ""
     if dal and al:
-        periodo = f"Dal {dal} al {al}"
+        periodo = f"{dal_lab} {dal} {al_lab} {al}"
     elif dal:
-        periodo = f"Dal {dal}"
+        periodo = f"{dal_lab} {dal}"
     elif al:
-        periodo = f"Fino al {al}"
+        periodo = f"{fino} {al}"
     righe = [
-        f"{emoji} <b>{strada or 'Evento'}</b>",
+        f"{emoji} <b>{strada or evento}</b>",
         f"{grad}" + (f" · {zona}" if zona else ""),
         periodo,
         testo[:350] + ("…" if len(testo) > 350 else ""),
     ]
-    return "\n".join(r for r in righe if r)
+    return chr(10).join(r for r in righe if r)
+
 
 
 def is_chiusura(ev):
@@ -701,22 +891,25 @@ def _fingerprint_viabilita(ev, prefisso="ev"):
     raw = "|".join(pezzi).lower().strip()
     return f"{prefisso}-" + hashlib.md5(raw.encode()).hexdigest()[:16]
 
-def formatta_evento_viabilita_breve(ev):
-    """Versione compatta per report lunghi."""
-    strada = " ".join(filter(None, [
-        ev.get("messageStreetNr"),
-        ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt"),
-    ])) or "Evento"
-    testo = (ev.get("placeIt") or "").strip().replace("<", "").replace(">", "")
+def formatta_evento_viabilita_breve(ev, lang="it"):
+    if lang == "de":
+        testo = (ev.get("placeDe") or ev.get("placeIt") or "").strip().replace("<", "").replace(">", "")
+        strada = " ".join(filter(None, [
+            ev.get("messageStreetNr"),
+            ev.get("messageStreetInternetDescDe") or ev.get("messageStreetWapDescDe") or ev.get("messageStreetInternetDescIt"),
+        ]))
+    else:
+        testo = (ev.get("placeIt") or "").strip().replace("<", "").replace(">", "")
+        strada = " ".join(filter(None, [
+            ev.get("messageStreetNr"),
+            ev.get("messageStreetInternetDescIt") or ev.get("messageStreetWapDescIt"),
+        ]))
     if len(testo) > 160:
         testo = testo[:157] + "…"
     dal = format_data_it(ev.get("beginDate") or "")
-    riga = f"• <b>{strada}</b>"
-    if dal:
-        riga += f" ({dal})"
-    if testo:
-        riga += f"\n  {testo}"
-    return riga
+    titolo = strada or (testo[:40] if testo else ("Ereignis" if lang == "de" else "Evento"))
+    return f"• <b>{titolo}</b>" + (f" ({dal})" if dal else "") + (chr(10) + "  " + testo if testo else "")
+
 
 
 def _pubblicato_ultime_ore(ev, ore=24):
@@ -842,60 +1035,99 @@ def is_chiusura_per_report(ev):
 
 
 def report_viabilita_mattutino():
+    """Restituisce dict {it, de}."""
     eventi = prendi_viabilita()
+    nl = chr(10)
     if not eventi:
-        return f"🚗 <b>Viabilità Alto Adige</b>\n<i>{ora_str()}</i>\n\nNessun dato."
+        return {
+            "it": f"🚗 <b>Viabilità Alto Adige</b>{nl}<i>{ora_str()}</i>{nl}{nl}Nessun dato.",
+            "de": f"🚗 <b>Verkehr Südtirol</b>{nl}<i>{ora_str()}</i>{nl}{nl}Keine Daten.",
+        }
 
     incidenti = _dedupe_eventi([
         e for e in eventi
         if is_incidente(e) and evento_attivo_oggi(e) and not is_evento_estero(e)
     ])
     code = _dedupe_eventi([e for e in eventi if is_coda_per_report(e)])
-    # Solo chiusure attive oggi (niente inizio futuro, niente Austria)
     chiusure = _dedupe_eventi([e for e in eventi if is_chiusura_per_report(e)])
 
-    testo = (
-        f"🚗 <b>Report viabilità mattutino</b>\n"
-        f"<i>{ora_str()}</i>\n\n"
-        f"💥 Incidenti: <b>{len(incidenti)}</b> · "
-        f"🚗 Code/rallentamenti: <b>{len(code)}</b> · "
-        f"🚫 Chiusure (A22/MEBO/città): <b>{len(chiusure)}</b>\n"
-    )
+    def _build(lang):
+        if lang == "de":
+            testo = (
+                f"🚗 <b>Verkehrsbericht morgens</b>{nl}"
+                f"<i>{ora_str()}</i>{nl}{nl}"
+                f"💥 Unfälle: <b>{len(incidenti)}</b> · "
+                f"🚗 Staus: <b>{len(code)}</b> · "
+                f"🚫 Sperren (A22/MEBO/Städte): <b>{len(chiusure)}</b>{nl}"
+            )
+            if incidenti:
+                testo += f"{nl}<b>—— Unfälle ——</b>{nl}"
+                for ev in incidenti[:12]:
+                    testo += formatta_evento_viabilita_breve(ev, "de") + nl
+            else:
+                testo += f"{nl}✅ Keine Unfälle gemeldet.{nl}"
+            if code:
+                testo += f"{nl}<b>—— Staus / Verlangsamungen ——</b>{nl}"
+                for ev in code[:12]:
+                    testo += formatta_evento_viabilita_breve(ev, "de") + nl
+            else:
+                testo += f"{nl}✅ Kein Stau / keine Verlangsamung.{nl}"
+            if chiusure:
+                testo += f"{nl}<b>—— Sperren (A22 · MEBO · Hauptorte) ——</b>{nl}"
+                usati = set()
+                for titolo, pred in GRUPPI_VIABILITA:
+                    gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
+                    if not gruppo:
+                        continue
+                    for e in gruppo:
+                        usati.add(e.get("messageId"))
+                    testo += f"{nl}<i>{titolo}</i>{nl}"
+                    for ev in gruppo[:10]:
+                        testo += formatta_evento_viabilita_breve(ev, "de") + nl
+            else:
+                testo += f"{nl}✅ Keine Sperren auf A22/MEBO/Hauptorten.{nl}"
+            testo += f"{nl}🔗 https://verkehr.provinz.bz.it"
+        else:
+            testo = (
+                f"🚗 <b>Report viabilità mattutino</b>{nl}"
+                f"<i>{ora_str()}</i>{nl}{nl}"
+                f"💥 Incidenti: <b>{len(incidenti)}</b> · "
+                f"🚗 Code/rallentamenti: <b>{len(code)}</b> · "
+                f"🚫 Chiusure (A22/MEBO/città): <b>{len(chiusure)}</b>{nl}"
+            )
+            if incidenti:
+                testo += f"{nl}<b>—— Incidenti ——</b>{nl}"
+                for ev in incidenti[:12]:
+                    testo += formatta_evento_viabilita_breve(ev, "it") + nl
+            else:
+                testo += f"{nl}✅ Nessun incidente segnalato.{nl}"
+            if code:
+                testo += f"{nl}<b>—— Code / rallentamenti ——</b>{nl}"
+                for ev in code[:12]:
+                    testo += formatta_evento_viabilita_breve(ev, "it") + nl
+            else:
+                testo += f"{nl}✅ Nessuna coda/rallentamento.{nl}"
+            if chiusure:
+                testo += f"{nl}<b>—— Chiusure (A22 · MEBO · città principali) ——</b>{nl}"
+                usati = set()
+                for titolo, pred in GRUPPI_VIABILITA:
+                    gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
+                    if not gruppo:
+                        continue
+                    for e in gruppo:
+                        usati.add(e.get("messageId"))
+                    testo += f"{nl}<i>{titolo}</i>{nl}"
+                    for ev in gruppo[:10]:
+                        testo += formatta_evento_viabilita_breve(ev, "it") + nl
+            else:
+                testo += f"{nl}✅ Nessuna chiusura su A22/MEBO/città principali.{nl}"
+            testo += f"{nl}🔗 https://traffico.provincia.bz.it"
+        return testo
 
-    if incidenti:
-        testo += "\n<b>—— Incidenti ——</b>\n"
-        for ev in incidenti[:12]:
-            testo += formatta_evento_viabilita_breve(ev) + "\n"
-    else:
-        testo += "\n✅ Nessun incidente segnalato.\n"
+    out = {"it": _build("it"), "de": _build("de")}
+    print(f"Report viabilità: it={len(out['it'])} de={len(out['de'])} car., inc={len(incidenti)}, code={len(code)}, chius={len(chiusure)}")
+    return out
 
-    if code:
-        testo += "\n<b>—— Code / rallentamenti ——</b>\n"
-        for ev in code[:12]:
-            testo += formatta_evento_viabilita_breve(ev) + "\n"
-    else:
-        testo += "\n✅ Nessuna coda/rallentamento.\n"
-
-    if chiusure:
-        testo += "\n<b>—— Chiusure (A22 · MEBO · città principali) ——</b>\n"
-        usati = set()
-        for titolo, pred in GRUPPI_VIABILITA:
-            gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
-            if not gruppo:
-                continue
-            for e in gruppo:
-                usati.add(e.get("messageId"))
-            testo += f"\n<i>{titolo}</i>\n"
-            for ev in gruppo[:10]:
-                testo += formatta_evento_viabilita_breve(ev) + "\n"
-    else:
-        testo += "\n✅ Nessuna chiusura su A22/MEBO/città principali.\n"
-
-    testo += "\n🔗 https://traffico.provincia.bz.it"
-    if SITE_URL:
-        testo += f"\n🌐 {SITE_URL}"
-    print(f"Report viabilità: {len(testo)} car., inc={len(incidenti)}, code={len(code)}, chius={len(chiusure)}")
-    return testo
 
 
 def nuove_chiusure_e_incidenti():
@@ -937,7 +1169,7 @@ def nuove_chiusure_e_incidenti():
                 continue
             mark_sent(key_id)
             mark_sent(key_fp)
-            out.append("💥 <b>Incidente stradale</b>\n" + formatta_evento_viabilita(ev))
+            out.append({"it": "💥 <b>Incidente stradale</b>\n" + formatta_evento_viabilita(ev, "it"), "de": "💥 <b>Unfall</b>\n" + formatta_evento_viabilita(ev, "de")})
             continue
 
         if is_coda_notificabile(ev):
@@ -967,7 +1199,7 @@ def nuove_chiusure_e_incidenti():
         mark_sent(key_id)
         mark_sent(key_fp)
         _coda_rate_mark()
-        out.append("🚗 <b>Coda / rallentamento</b>\n" + formatta_evento_viabilita(ev))
+        out.append({"it": "🚗 <b>Coda / rallentamento</b>" + chr(10) + formatta_evento_viabilita(ev, "it"), "de": "🚗 <b>Stau / Verlangsamung</b>" + chr(10) + formatta_evento_viabilita(ev, "de")})
         print(f"Coda notificata: {key_fp} (pubblicata {int(delta/60)} min fa)")
 
     return out
@@ -1062,75 +1294,91 @@ def prendi_farmacie_turno(modo="tutte"):
 
 
 def report_farmacie(quando="sera"):
-    """quando: 'sera' → turno notte (sera + dopo mezzanotte); 'mattina' → diurne.
-    Lista compatta: nome, orario, indirizzo. Niente telefono/note/mappa.
-    """
+    """quando: 'sera' → notte; 'mattina' → diurne. Restituisce dict {it, de}."""
     modo = "notte" if quando in ("sera", "notte", "notturno") else "giorno"
-    etichetta = "turno di notte" if modo == "notte" else "turno di giorno"
     farm = prendi_farmacie_turno(modo)
-    if not farm:
-        return f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n\nNessun dato disponibile."
+    nl = chr(10)
 
-    def _sort_key(f):
-        o = _parse_orario_turno(f)
-        if not o:
-            return (2, 0, f.get("PHAR_DESC_I") or "")
-        start, _ = o
-        blocco = 0 if start >= 18 * 60 else (1 if start <= 30 else 2)
-        return (blocco, start, f.get("PHAR_DESC_I") or "")
+    def _build(lang):
+        if lang == "de":
+            etichetta = "Nachtdienst" if modo == "notte" else "Tagesdienst"
+            none = "Keine Daten verfügbar."
+            farmacia = "Apotheke"
+            altro = "Andere"
+        else:
+            etichetta = "turno di notte" if modo == "notte" else "turno di giorno"
+            none = "Nessun dato disponibile."
+            farmacia = "Farmacia"
+            altro = "Altro"
+        if not farm:
+            return f"💊 <b>{'Apotheken' if lang == 'de' else 'Farmacie'} – {etichetta}</b>{nl}<i>{ora_str()}</i>{nl}{nl}{none}"
 
-    # Deduplica per farmacia+orario (l'API a volte espone due record simili)
-    visti = set()
-    unici = []
-    for f in farm:
-        key = (
-            (f.get("PHAR_ID") or f.get("PHAR_DESC_I") or "").strip().lower(),
-            (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip(),
-            (f.get("GEME_DESC_I") or "").strip().lower(),
-        )
-        if key in visti:
-            continue
-        visti.add(key)
-        unici.append(f)
-    farm = unici
+        def _sort_key(f):
+            o = _parse_orario_turno(f)
+            if not o:
+                return (2, 0, f.get("PHAR_DESC_I") or "")
+            start, _ = o
+            blocco = 0 if start >= 18 * 60 else (1 if start <= 30 else 2)
+            return (blocco, start, f.get("PHAR_DESC_I") or "")
 
-    per_comune = {}
-    for f in farm:
-        c = f.get("GEME_DESC_I") or "Altro"
-        per_comune.setdefault(c, []).append(f)
+        visti = set()
+        unici = []
+        for f in farm:
+            key = (
+                (f.get("PHAR_ID") or f.get("PHAR_DESC_I") or "").strip().lower(),
+                (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip(),
+                (f.get("GEME_DESC_I") or "").strip().lower(),
+            )
+            if key in visti:
+                continue
+            visti.add(key)
+            unici.append(f)
 
-    testo = f"💊 <b>Farmacie – {etichetta}</b>\n<i>{ora_str()}</i>\n"
-    for comune in sorted(per_comune.keys()):
-        testo += f"\n<b>{comune}</b>\n"
-        for f in sorted(per_comune[comune], key=_sort_key):
-            nome = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or "Farmacia"
-            indirizzo = (f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or "").strip()
-            orario = (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
-            testo += f"• <b>{nome}</b>"
-            if orario:
-                testo += f" · 🕐 {orario}"
-            testo += "\n"
-            if indirizzo:
-                testo += f"  📍 {indirizzo}\n"
-    if SITE_URL:
-        testo += f"\n🌐 Dettagli: {SITE_URL}"
-    return testo
+        per_comune = {}
+        for f in unici:
+            if lang == "de":
+                c = f.get("GEME_DESC_D") or f.get("GEME_DESC_I") or altro
+            else:
+                c = f.get("GEME_DESC_I") or f.get("GEME_DESC_D") or altro
+            per_comune.setdefault(c, []).append(f)
 
+        titolo = "Apotheken" if lang == "de" else "Farmacie"
+        testo = f"💊 <b>{titolo} – {etichetta}</b>{nl}<i>{ora_str()}</i>{nl}"
+        for comune in sorted(per_comune.keys()):
+            testo += f"{nl}<b>{comune}</b>{nl}"
+            for f in sorted(per_comune[comune], key=_sort_key):
+                if lang == "de":
+                    nome = f.get("PHAR_DESC_D") or f.get("PHAR_DESC_I") or farmacia
+                    indirizzo = (f.get("PHAR_ADRESS_D") or f.get("PHAR_ADRESS_I") or "").strip()
+                else:
+                    nome = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or farmacia
+                    indirizzo = (f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or "").strip()
+                orario = (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
+                testo += f"• <b>{nome}</b>"
+                if orario:
+                    testo += f" · 🕐 {orario}"
+                testo += nl
+                if indirizzo:
+                    testo += f"  📍 {indirizzo}{nl}"
+        return testo
+
+    return {"it": _build("it"), "de": _build("de")}
 
 
 # ========== ALLARMI PROTEZIONE CIVILE (comunicati operativi) ==========
-def prendi_allarmi_pc():
-    """Feed SIAG ufficiale usato da allerta-protezione-civile.provincia.bz.it"""
+def prendi_allarmi_pc(lang="it"):
+    """Feed SIAG ufficiale – I = italiano, D = tedesco."""
     try:
+        file = "BIS_Zivilschutz_D.json" if lang == "de" else "BIS_Zivilschutz_I.json"
         r = requests.get(
-            "https://static-weather.services.siag.it/sys/BIS_Zivilschutz_I.json",
+            f"https://static-weather.services.siag.it/sys/{file}",
             timeout=20,
             headers={"User-Agent": "MonitorAltoAdige/1.0", "Accept": "application/json"},
         )
         raw = r.content
-        if raw[:2] == b"\xff\xfe":
+        if raw[:2] == bytes([0xFF, 0xFE]):
             text = raw.decode("utf-16-le")
-        elif raw[:2] == b"\xfe\xff":
+        elif raw[:2] == bytes([0xFE, 0xFF]):
             text = raw.decode("utf-16-be")
         else:
             text = raw.decode("utf-8", errors="replace")
@@ -1144,9 +1392,18 @@ def prendi_allarmi_pc():
 
 
 def controlla_allarmi_pc():
-    """Una notifica per comunicato attivo (ARTC_STATUS == 16)."""
+    """Una notifica per comunicato attivo (ARTC_STATUS == 16), bilingue."""
     out = []
-    for a in prendi_allarmi_pc():
+    import re as _re
+    lista_it = prendi_allarmi_pc("it")
+    lista_de = prendi_allarmi_pc("de")
+    by_id_de = {}
+    for a in lista_de:
+        aid = str(a.get("ARTC_ID") or "")
+        if aid:
+            by_id_de[aid] = a
+
+    for a in lista_it:
         try:
             status = int(a.get("ARTC_STATUS") or 0)
         except Exception:
@@ -1161,28 +1418,39 @@ def controlla_allarmi_pc():
         key = f"pc-allarme-{aid}"
         if already_sent(key, ttl_hours=48):
             continue
-        titolo = (a.get("ARTC_TITLE") or "Comunicato di Protezione Civile").strip()
-        # strip HTML grezzo
-        import re
-        titolo = re.sub(r"<[^>]+>", "", titolo)
-        sub = re.sub(r"<[^>]+>", "", (a.get("ARTC_SUBTITLE") or "")).strip()
-        testo = re.sub(r"<[^>]+>", "", (a.get("ARTC_LCONTENT") or "")).strip()
-        if len(testo) > 900:
-            testo = testo[:897] + "…"
-        data = (a.get("ARTC_DATE") or "").replace("T00:00:00", "").replace(" 00:00:00", "")
-        ora = a.get("ARTC_TIME") or ""
-        quando = " ".join(x for x in (format_data_it(data) if data else data, ora) if x)
-        blocco = "🆘 <b>Allarme di Protezione Civile</b>\n"
-        if quando:
-            blocco += f"🕒 {quando}\n"
-        blocco += f"<b>{titolo}</b>\n"
-        if sub:
-            blocco += f"{sub}\n"
-        if testo:
-            blocco += f"\n{testo}\n"
-        blocco += "\n🔗 https://allerta-protezione-civile.provincia.bz.it/it/home"
-        out.append(blocco)
-        print(f"Allarme PC nuovo: {titolo[:60]}")
+        a_de = by_id_de.get(str(a.get("ARTC_ID") or ""), a)
+
+        def _bloc(src, lang):
+            titolo = (src.get("ARTC_TITLE") or (
+                "Zivilschutzmitteilung" if lang == "de" else "Comunicato di Protezione Civile"
+            )).strip()
+            titolo = _re.sub(r"<[^>]+>", "", titolo)
+            sub = _re.sub(r"<[^>]+>", "", (src.get("ARTC_SUBTITLE") or "")).strip()
+            testo = _re.sub(r"<[^>]+>", "", (src.get("ARTC_LCONTENT") or "")).strip()
+            if len(testo) > 900:
+                testo = testo[:897] + "…"
+            data = (src.get("ARTC_DATE") or "").replace("T00:00:00", "").replace(" 00:00:00", "")
+            ora = src.get("ARTC_TIME") or ""
+            quando = " ".join(x for x in (format_data_it(data) if data else data, ora) if x)
+            nl = chr(10)
+            if lang == "de":
+                blocco = f"🆘 <b>Zivilschutzwarnung</b>{nl}"
+                link = "https://allerta-protezione-civile.provincia.bz.it/de/home"
+            else:
+                blocco = f"🆘 <b>Allarme di Protezione Civile</b>{nl}"
+                link = "https://allerta-protezione-civile.provincia.bz.it/it/home"
+            if quando:
+                blocco += f"🕒 {quando}{nl}"
+            blocco += f"<b>{titolo}</b>{nl}"
+            if sub:
+                blocco += f"{sub}{nl}"
+            if testo:
+                blocco += f"{nl}{testo}{nl}"
+            blocco += f"{nl}🔗 {link}"
+            return blocco
+
+        out.append({"it": _bloc(a, "it"), "de": _bloc(a_de, "de")})
+        print(f"Allarme PC nuovo: {(a.get('ARTC_TITLE') or '')[:60]}")
     return out
 
 
@@ -1197,9 +1465,7 @@ def controlla_emergenze():
     messaggi.extend(controlla_allarmi_pc())
 
     if messaggi:
-        testo = f"🔔 <b>Monitor Alto Adige</b>\n<i>{ora_str()}</i>\n\n"
-        testo += "\n\n————————\n\n".join(messaggi)
-        invia_messaggio(testo)
+        invia_pacchetto(messaggi)
     else:
         print("Nessuna condizione di allerta")
 
