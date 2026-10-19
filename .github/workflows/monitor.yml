@@ -2,15 +2,29 @@ name: Monitor Alto Adige
 
 on:
   schedule:
-    # Controlli ogni 30 minuti (emergenze + report in fascia oraria)
-    - cron: '*/30 * * * *'
-    # Backup mattina (se il job delle 30 min è in ritardo)
+    # Controlli generali ogni 20 minuti (UTC)
+    - cron: '*/20 * * * *'
+
+    # Report mattina (backup se il job */20 è in ritardo)
+    # 5:00 / 5:30 / 6:00 / 7:00 / 9:00 UTC
+    # → in CEST (UTC+2): 7:00, 7:30, 8:00, 9:00, 11:00 Roma
+    # → in CET  (UTC+1): 6:00, 6:30, 7:00, 8:00, 10:00 Roma
     - cron: '0 5 * * *'
     - cron: '30 5 * * *'
     - cron: '0 6 * * *'
+    - cron: '0 7 * * *'
     - cron: '0 9 * * *'
-    # Farmacie weekend sera
-    - cron: '0 18 * * 0,6'
+
+    # Farmacie SERA – slot dedicati (più affidabili del solo */20)
+    # 17:00 e 18:00 UTC = 19:00 e 20:00 Roma in CEST (estate/ottobre)
+    # In inverno (CET) diventano 18:00 e 19:00 Roma – ancora nella finestra 18–23:30
+    - cron: '0 17 * * *'
+    - cron: '0 18 * * *'
+    - cron: '30 19 * * *'   # 21:30 CEST / 20:30 CET – ultimo tentativo sera
+
+    # Farmacie weekend mattina (turno diurno) – 6:30 UTC ≈ 8:30 CEST
+    - cron: '30 6 * * 0,6'
+
   workflow_dispatch:
     inputs:
       modo:
@@ -28,7 +42,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      # Qui salva/ripristina la cartella .state (anti-spam e flag giornalieri)
+      # Stato anti-spam e flag giornalieri (farm_sera, meteo_mattina, …)
       - name: Restore state
         uses: actions/cache@v4
         with:
@@ -43,13 +57,19 @@ jobs:
       - name: Determina modalità
         id: mode
         run: |
+          SCHEDULE="${{ github.event.schedule }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "modo=${{ github.event.inputs.modo || 'check' }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event.schedule }}" = "0 18 * * 0,6" ]; then
-            echo "modo=farmacie" >> $GITHUB_OUTPUT
+            echo "modo=${{ github.event.inputs.modo || 'check' }}" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "0 17 * * *" ] || [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "30 19 * * *" ]; then
+            # Slot dedicati farmacie sera
+            echo "modo=farmacie" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "30 6 * * 0,6" ]; then
+            # Weekend mattina → farmacie (il codice sceglie mattina/sera in base all'ora)
+            echo "modo=farmacie" >> "$GITHUB_OUTPUT"
           else
-            echo "modo=check" >> $GITHUB_OUTPUT
+            echo "modo=check" >> "$GITHUB_OUTPUT"
           fi
+          echo "Schedule: ${SCHEDULE:-manual} → modo=$(cat "$GITHUB_OUTPUT" | grep modo)"
 
       - name: Esegui
         env:
@@ -57,5 +77,13 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           SUBS_URL: ${{ secrets.SUBS_URL }}
           SUBS_KEY: ${{ secrets.SUBS_KEY }}
-          SITE_URL: https://monitor-alto-adige-pub.pages.dev/
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: python notifica.py ${{ steps.mode.outputs.modo }}
+
+      # Salva lo stato per i run successivi (anti-spam + flag giornalieri)
+      - name: Save state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .state
+          key: monitor-state-${{ github.run_id }}
