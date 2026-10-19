@@ -38,25 +38,46 @@ CERCHI = {"1": "🔴", "2": "🟠", "3": "🟡", "4": "🟢", "5": "🔵"}
 COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"]
 
 # Zone / arterie per report viabilità
+def _testo_zona_evento(e):
+    """Testo combinato IT+DE per matching zone (place, zone, strada)."""
+    parts = [
+        e.get("messageZoneDescIt") or "",
+        e.get("messageZoneDescDe") or "",
+        e.get("placeIt") or "",
+        e.get("placeDe") or "",
+        e.get("messageStreetInternetDescIt") or "",
+        e.get("messageStreetInternetDescDe") or "",
+        e.get("messageStreetNr") or "",
+    ]
+    return " ".join(parts).lower()
+
+
+# (titolo_it, titolo_de, predicato)
 GRUPPI_VIABILITA = [
-    ("A22", lambda e: (e.get("messageStreetNr") or "").upper() == "A22"
-     or "brennero" in ((e.get("placeIt") or "") + (e.get("messageStreetInternetDescIt") or "")).lower()
-     and "a22" in ((e.get("messageStreetNr") or "") + (e.get("placeIt") or "")).lower()),
-    ("MEBO / SS38 / SS42", lambda e: any(
-        x in ((e.get("messageStreetNr") or "") + " " + (e.get("placeIt") or "")).upper()
+    ("A22", "A22", lambda e: (e.get("messageStreetNr") or "").upper() == "A22"
+     or ("brenner" in _testo_zona_evento(e) and "a22" in _testo_zona_evento(e))),
+    ("MEBO / SS38 / SS42", "MEBO / SS38 / SS42", lambda e: any(
+        x in ((e.get("messageStreetNr") or "") + " " + _testo_zona_evento(e)).upper()
         for x in ("MEBO", "SS38", "SS42")
     )),
-    ("Bolzano", lambda e: "bolzano" in (e.get("messageZoneDescIt") or "").lower()
-     or "bolzano" in (e.get("placeIt") or "").lower()),
-    ("Merano / Burgraviato", lambda e: "burgraviato" in (e.get("messageZoneDescIt") or "").lower()
-     or "merano" in (e.get("placeIt") or "").lower()),
-    ("Bressanone / Val d'Isarco", lambda e: "isarco" in (e.get("messageZoneDescIt") or "").lower()
-     or "bressanone" in (e.get("placeIt") or "").lower()),
-    ("Brunico / Val Pusteria", lambda e: "pusteria" in (e.get("messageZoneDescIt") or "").lower()
-     or "brunico" in (e.get("placeIt") or "").lower()),
-    ("Vipiteno", lambda e: "vipiteno" in ((e.get("placeIt") or "") + (e.get("messageZoneDescIt") or "")).lower()),
-    ("Silandro / Val Venosta", lambda e: "venosta" in (e.get("messageZoneDescIt") or "").lower()
-     or "silandro" in (e.get("placeIt") or "").lower()),
+    ("Bolzano", "Bozen", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("bolzano", "bozen")
+    )),
+    ("Merano / Burgraviato", "Meran / Burggrafenamt", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("burgraviato", "burggrafenamt", "merano", "meran")
+    )),
+    ("Bressanone / Val d'Isarco", "Brixen / Eisacktal", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("isarco", "eisack", "bressanone", "brixen")
+    )),
+    ("Brunico / Val Pusteria", "Bruneck / Pustertal", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("pusteria", "pustertal", "brunico", "bruneck")
+    )),
+    ("Vipiteno", "Sterzing", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("vipiteno", "sterzing")
+    )),
+    ("Silandro / Val Venosta", "Schlanders / Vinschgau", lambda e: any(
+        x in _testo_zona_evento(e) for x in ("venosta", "vinschgau", "silandro", "schlanders")
+    )),
 ]
 
 
@@ -931,7 +952,7 @@ def _chiusura_prioritaria(ev):
     """Chiusure su A22, MEBO/SS38/SS42 o comuni principali."""
     if not is_chiusura(ev):
         return False
-    for _, pred in GRUPPI_VIABILITA:
+    for *_rest, pred in GRUPPI_VIABILITA:
         if pred(ev):
             return True
     return False
@@ -1075,13 +1096,13 @@ def report_viabilita_mattutino():
             if chiusure:
                 testo += f"{nl}<b>—— Sperren (A22 · MEBO · Hauptorte) ——</b>{nl}"
                 usati = set()
-                for titolo, pred in GRUPPI_VIABILITA:
+                for titolo_it, titolo_de, pred in GRUPPI_VIABILITA:
                     gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
                     if not gruppo:
                         continue
                     for e in gruppo:
                         usati.add(e.get("messageId"))
-                    testo += f"{nl}<i>{titolo}</i>{nl}"
+                    testo += f"{nl}<i>{titolo_de if lang == 'de' else titolo_it}</i>{nl}"
                     for ev in gruppo[:10]:
                         testo += formatta_evento_viabilita_breve(ev, "de") + nl
             else:
@@ -1110,13 +1131,13 @@ def report_viabilita_mattutino():
             if chiusure:
                 testo += f"{nl}<b>—— Chiusure (A22 · MEBO · città principali) ——</b>{nl}"
                 usati = set()
-                for titolo, pred in GRUPPI_VIABILITA:
+                for titolo_it, titolo_de, pred in GRUPPI_VIABILITA:
                     gruppo = [e for e in chiusure if pred(e) and e.get("messageId") not in usati]
                     if not gruppo:
                         continue
                     for e in gruppo:
                         usati.add(e.get("messageId"))
-                    testo += f"{nl}<i>{titolo}</i>{nl}"
+                    testo += f"{nl}<i>{titolo_de if lang == 'de' else titolo_it}</i>{nl}"
                     for ev in gruppo[:10]:
                         testo += formatta_evento_viabilita_breve(ev, "it") + nl
             else:
