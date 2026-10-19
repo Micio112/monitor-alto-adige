@@ -962,18 +962,23 @@
     async function caricaProntoSoccorso() {
       const cont = document.querySelector(".lista-ospedali");
       const agg = document.querySelector("#pronto-soccorso .aggiornamento");
-            try {
-        const res = await fetch("https://dati.retecivica.bz.it/services/PS_Queue/json");
+      const criticita = [];
+      try {
+        const res = await fetch("https://dati.retecivica.bz.it/services/PS_Queue/json", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         const dati = await res.json();
+        if (!Array.isArray(dati)) throw new Error("Formato dati non valido");
         const ospedali = {};
         let ultimo = null;
         dati.forEach(r => {
-          const nome = r.HOSPITAL_DESCRIPTION;
-          if (!ospedali[nome]) ospedali[nome] = { totale: 0, codici: {} };
-          const q = Number(r.QUEUE_LENGTH) || 0;
+          const nome = r.HOSPITAL_DESCRIPTION || r.hospital_description || "?";
+          if (!ospedali[nome]) ospedali[nome] = { totale: 0, codici: { "1": 0, "2": 0, "3": 0, "4": 0, "5": 0 } };
+          const q = Number(r.QUEUE_LENGTH != null ? r.QUEUE_LENGTH : r.queue_length) || 0;
+          const cod = String(r.TRIAGE_CODE != null ? r.TRIAGE_CODE : r.triage_code || "");
           ospedali[nome].totale += q;
-          ospedali[nome].codici[r.TRIAGE_CODE] = q;
-          if (r.LAST_UPDATE_TIME) ultimo = r.LAST_UPDATE_TIME;
+          if (cod in ospedali[nome].codici) ospedali[nome].codici[cod] = q;
+          const lu = r.LAST_UPDATE_TIME || r.last_update_time;
+          if (lu) ultimo = lu;
         });
         const nomi = Object.keys(ospedali).sort((a, b) => ospedali[b].totale - ospedali[a].totale);
         let html = "";
@@ -985,7 +990,8 @@
           if (critico) criticita.push(nomeOspedale(nome));
           let codiciHtml = "";
           ["1","2","3","4","5"].forEach(cod => {
-            codiciHtml += `<div class="codice ${TRIAGE[cod].classe}">${triageNome(cod)} <span>${c[cod] || 0}</span></div>`;
+            const cls = (TRIAGE[cod] && TRIAGE[cod].classe) || "";
+            codiciHtml += `<div class="codice ${cls}">${triageNome(cod)} <span>${c[cod] || 0}</span></div>`;
           });
           html += `<div class="ospedale${critico ? " critico" : ""}">
             <div class="ospedale-header"><span class="ospedale-nome">${nomeOspedale(nome)}</span>
@@ -993,9 +999,19 @@
             <div class="codici">${codiciHtml}</div></div>`;
         });
         cont.innerHTML = html || "<p>" + t("no_data") + "</p>";
-        agg.textContent = ultimo ? t("last_update") + ": " + new Date(ultimo).toLocaleString(loc()) : t("updated") + ": " + new Date().toLocaleString(loc());
-        window.__criticitaPS = criticita; mergeBanner();
-      } catch (e) { cont.innerHTML = "<p>" + t("err_ps") + "</p>"; }
+        if (agg) {
+          agg.textContent = ultimo
+            ? t("last_update") + ": " + new Date(ultimo).toLocaleString(loc())
+            : t("updated") + ": " + new Date().toLocaleString(loc());
+        }
+        window.__criticitaPS = criticita;
+        mergeBanner();
+      } catch (e) {
+        console.error("PS", e);
+        if (cont) cont.innerHTML = "<p>" + t("err_ps") + "</p>";
+        window.__criticitaPS = [];
+        mergeBanner();
+      }
     }
 
     async function caricaFarmacie() {
