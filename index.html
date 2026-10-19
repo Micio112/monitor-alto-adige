@@ -540,7 +540,7 @@
         h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
         link_pc: "Portale ufficiale →", h_meteo: "🌤 Meteo Alto Adige", h_allerte: "🚨 Allerte Meteo",
         h_ps: "🏥 Pronto Soccorso", h_aed: "❤️ Defibrillatori pubblici (AED)", agg_aed: "Elenco per comune",
-        link_aed: "Mappa interattiva →", h_farm: "💊 Farmacie di turno",
+        link_aed: "Mappa interattiva →", aed_other: "Altro", aed_no_addr: "Indirizzo non disponibile", aed_none: "Nessun AED trovato.", aed_count: "defibrillatori", aed_source: "fonte", aed_err: "Errore caricamento AED.", aed_map_ext: "Apri mappa esterna", h_farm: "💊 Farmacie di turno",
         agg_farm: "Notte (20–8) · weekend · festivi",
         h_via: "🚗 Viabilità", link_via: "Bollettino ufficiale →", h_park: "🅿️ Parcheggi",
         h_numeri: "📞 Numeri e Link utili", agg_numeri: "Tocca Chiama per comporre",
@@ -604,7 +604,7 @@
         h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
         link_pc: "Offizielles Portal →", h_meteo: "🌤 Wetter Südtirol", h_allerte: "🚨 Wetterwarnungen",
         h_ps: "🏥 EH (Notaufnahme)", h_aed: "❤️ Öffentliche Defibrillatoren (AED)", agg_aed: "Liste nach Gemeinde",
-        link_aed: "Interaktive Karte →", h_farm: "💊 Bereitschaftsapotheken",
+        link_aed: "Interaktive Karte →", aed_other: "Sonstiges", aed_no_addr: "Adresse nicht verfügbar", aed_none: "Keine AED gefunden.", aed_count: "Defibrillatoren", aed_source: "Quelle", aed_err: "Fehler beim Laden der AED.", aed_map_ext: "Externe Karte öffnen", h_farm: "💊 Bereitschaftsapotheken",
         agg_farm: "Nacht (20–8) · Wochenende · Feiertage",
         h_via: "🚗 Verkehrslage", link_via: "Offizielles Bulletin →", h_park: "🅿️ Parkplätze",
         h_numeri: "📞 Nützliche Nummern & Links", agg_numeri: "Tippe auf Anrufen zum Wählen",
@@ -754,6 +754,7 @@
     const COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"];
     const COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"];
     const COMUNI_AED = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives", "Appiano", "Lana", "Ortisei"];
+    const COMUNI_AED_DE = ["Bozen", "Meran", "Brixen", "Bruneck", "Sterzing", "Schlanders", "Leifers", "Eppan", "Lana", "St. Ulrich"];
     const TRIAGE = {
       "1": { nome: "Rosso", classe: "c-rosso" },
       "2": { nome: "Arancione", classe: "c-arancione" },
@@ -1353,9 +1354,12 @@
         return {
           properties: {
             MUNICIPALITY_IT: tags["addr:city"] || tags["addr:municipality"] || tags["addr:place"] || "Alto Adige",
+            MUNICIPALITY_DE: tags["addr:city"] || tags["addr:municipality"] || tags["addr:place"] || "Südtirol",
             STREET_IT: tags["addr:street"] || tags.name || "",
+            STREET_DE: tags["addr:street"] || tags.name || "",
             HOUSE_NUMBER: tags["addr:housenumber"] || "",
             DESCRIPTION_IT: tags["defibrillator:location"] || tags.description || tags["emergency:social_facility"] || "",
+            DESCRIPTION_DE: tags["defibrillator:location"] || tags.description || tags["emergency:social_facility"] || "",
             LATITUDE: el.lat,
             LONGITUDE: el.lon
           }
@@ -1373,24 +1377,30 @@
         const perComune = {};
         features.forEach(f => {
           const p = f.properties || {};
-          const comune = p.MUNICIPALITY_IT || p.MUNICIPALITY_DE || "Altro";
+          const comune = lang === "de"
+            ? (p.MUNICIPALITY_DE || p.MUNICIPALITY_IT || t("aed_other"))
+            : (p.MUNICIPALITY_IT || p.MUNICIPALITY_DE || t("aed_other"));
           if (!perComune[comune]) perComune[comune] = [];
-          const via = [p.STREET_IT || p.STREET_DE, p.HOUSE_NUMBER].filter(Boolean).join(" ").trim();
-          const desc = p.DESCRIPTION_IT || p.DESCRIPTION_DE || "";
+          const street = lang === "de"
+            ? (p.STREET_DE || p.STREET_IT || "")
+            : (p.STREET_IT || p.STREET_DE || "");
+          const via = [street, p.HOUSE_NUMBER].filter(Boolean).join(" ").trim();
+          const desc = lang === "de"
+            ? (p.DESCRIPTION_DE || p.DESCRIPTION_IT || "")
+            : (p.DESCRIPTION_IT || p.DESCRIPTION_DE || "");
           let lat = p.LATITUDE, lon = p.LONGITUDE;
-          // se mancano, prova geometria WGS84
           if ((lat == null || lon == null) && f.geometry && f.geometry.type === "Point") {
             const c = f.geometry.coordinates || [];
-            // solo se sembrano lat/lon (non proiezione UTM)
             if (c.length >= 2 && Math.abs(c[1]) <= 90 && Math.abs(c[0]) <= 180) {
               lon = c[0]; lat = c[1];
             }
           }
           perComune[comune].push({ via, desc, lat, lon });
         });
+        const priorita = lang === "de" ? COMUNI_AED_DE : COMUNI_AED;
         const nomi = Object.keys(perComune).sort((a, b) => {
-          const ia = COMUNI_AED.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
-          const ib = COMUNI_AED.findIndex(c => b.toLowerCase().includes(c.toLowerCase()));
+          const ia = priorita.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
+          const ib = priorita.findIndex(c => b.toLowerCase().includes(c.toLowerCase()));
           if (ia >= 0 && ib < 0) return -1; if (ib >= 0 && ia < 0) return 1;
           if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, loc());
         });
@@ -1401,7 +1411,7 @@
           totale += lista.length;
           html += `<div class="aed-comune"><h3>♥ ${comune} (${lista.length})</h3>`;
           lista.forEach(it => {
-            let riga = it.via || "Indirizzo non disponibile";
+            let riga = it.via || t("aed_no_addr");
             if (it.desc) riga += " – " + it.desc;
             const maps = (it.lat != null && it.lon != null)
               ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">${t("park_map")}</a>`
@@ -1410,12 +1420,22 @@
           });
           html += `</div>`;
         });
-        cont.innerHTML = html || "<p style='padding:12px'>Nessun AED.</p>";
-        if (agg) agg.textContent = totale + " defibrillatori · fonte " + source + " · " + new Date().toLocaleString("it-IT");
+        cont.innerHTML = html || "<p style='padding:12px'>" + t("aed_none") + "</p>";
+        if (agg) {
+          agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
+        }
+        // aggiorna link mappa esterna
+        const mapLang = lang === "de" ? "de" : "it";
+        document.querySelectorAll('a[href*="openaedmap.org"]').forEach(a => {
+          a.href = "https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35";
+        });
       } catch (e) {
         console.error("AED error", e);
-        cont.innerHTML = "<p style='padding:12px'>Errore caricamento AED. <a href='https://openaedmap.org/it/#map=10/46.5/11.35' target='_blank' rel='noopener'>Apri mappa esterna</a></p>";
-        if (agg) agg.textContent = "Errore · " + new Date().toLocaleString("it-IT");
+        const mapLang = lang === "de" ? "de" : "it";
+        cont.innerHTML = "<p style='padding:12px'>" + t("aed_err") +
+          " <a href='https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35' target='_blank' rel='noopener'>" +
+          t("aed_map_ext") + "</a></p>";
+        if (agg) agg.textContent = t("aed_err") + " · " + new Date().toLocaleString(loc());
       }
     }
 
