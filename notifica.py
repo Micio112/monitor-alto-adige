@@ -22,6 +22,12 @@ TZ = ZoneInfo("Europe/Rome")
 STATE_DIR = Path(".state")
 STATE_DIR.mkdir(exist_ok=True)
 
+def html_esc(s):
+    return (str(s or "")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;"))
+
 COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"]
 LIVELLI_ALLERTA = ["gialla", "arancione", "rossa"]
 
@@ -297,7 +303,7 @@ def invia_messaggio(testo, testo_de=None):
     testo può essere str oppure dict {"it":..., "de":...}.
     """
     if not TOKEN:
-        print("Token mancante")
+        print("Token mancante – controlla secret TELEGRAM_TOKEN")
         return False
     if isinstance(testo, dict):
         testo_it = testo.get("it") or testo.get("de") or ""
@@ -306,16 +312,24 @@ def invia_messaggio(testo, testo_de=None):
         testo_it = testo or ""
         if testo_de is None:
             testo_de = testo_it
+    if not (testo_it or "").strip() and not (testo_de or "").strip():
+        print("Messaggio vuoto – non invio")
+        return False
     dest = prendi_destinatari()
     if not dest:
-        print("Nessun destinatario")
+        print("Nessun destinatario – controlla TELEGRAM_CHAT_ID / SUBS_URL / SUBS_KEY")
         return False
     testo_it = _append_site(testo_it)
     testo_de = _append_site(testo_de)
-    ok = True
+    print(f"Invio a {len(dest)} destinatari · IT {len(testo_it)} car. · DE {len(testo_de)} car.")
+    inviati = 0
     for d in dest:
         body = testo_de if d.get("lang") == "de" else testo_it
-        for pezzo in _spezza_messaggio(body):
+        parti = _spezza_messaggio(body)
+        if not parti:
+            print("  skip", d["id"], "corpo vuoto")
+            continue
+        for pezzo in parti:
             try:
                 r = requests.post(
                     f"https://api.telegram.org/bot{TOKEN}/sendMessage",
@@ -327,25 +341,35 @@ def invia_messaggio(testo, testo_de=None):
                     },
                     timeout=20,
                 )
-                if not r.ok:
-                    ok = False
-                    print("Errore invio", d["id"], r.text[:250])
-                    if "parse" in (r.text or "").lower() or r.status_code == 400:
-                        r2 = requests.post(
-                            f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                            data={
-                                "chat_id": d["id"],
-                                "text": pezzo.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", ""),
-                                "disable_web_page_preview": True,
-                            },
-                            timeout=20,
-                        )
-                        if r2.ok:
-                            ok = True
+                if r.ok:
+                    inviati += 1
+                    print(f"  OK {d['id']} ({d.get('lang','it')})")
+                else:
+                    print("  Errore invio", d["id"], r.status_code, r.text[:300])
+                    # ritenta senza HTML
+                    plain = (
+                        pezzo.replace("<b>", "").replace("</b>", "")
+                        .replace("<i>", "").replace("</i>", "")
+                        .replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+                    )
+                    r2 = requests.post(
+                        f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                        data={
+                            "chat_id": d["id"],
+                            "text": plain,
+                            "disable_web_page_preview": True,
+                        },
+                        timeout=20,
+                    )
+                    if r2.ok:
+                        inviati += 1
+                        print(f"  OK plain {d['id']}")
+                    else:
+                        print("  Errore plain", d["id"], r2.text[:200])
             except Exception as e:
-                ok = False
-                print("Eccezione invio", d["id"], e)
-    return ok
+                print("  Eccezione invio", d["id"], e)
+    print(f"Messaggi consegnati: {inviati}")
+    return inviati > 0
 
 
 def invia_pacchetto(messaggi):
@@ -1374,7 +1398,7 @@ def report_farmacie(quando="sera"):
         titolo = "Apotheken" if lang == "de" else "Farmacie"
         testo = f"💊 <b>{titolo} – {etichetta}</b>{nl}<i>{ora_str()}</i>{nl}"
         for comune in sorted(per_comune.keys()):
-            testo += f"{nl}<b>{comune}</b>{nl}"
+            testo += f"{nl}<b>{html_esc(comune)}</b>{nl}"
             for f in sorted(per_comune[comune], key=_sort_key):
                 if lang == "de":
                     nome = f.get("PHAR_DESC_D") or f.get("PHAR_DESC_I") or farmacia
@@ -1383,12 +1407,12 @@ def report_farmacie(quando="sera"):
                     nome = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or farmacia
                     indirizzo = (f.get("PHAR_ADRESS_I") or f.get("PHAR_ADRESS_D") or "").strip()
                 orario = (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
-                testo += f"• <b>{nome}</b>"
+                testo += f"• <b>{html_esc(nome)}</b>"
                 if orario:
                     testo += f" · 🕐 {orario}"
                 testo += nl
                 if indirizzo:
-                    testo += f"  📍 {indirizzo}{nl}"
+                    testo += f"  📍 {html_esc(indirizzo)}{nl}"
         return testo
 
     return {"it": _build("it"), "de": _build("de")}
@@ -1595,12 +1619,22 @@ if __name__ == "__main__":
         elif modo == "farmacie":
             quando = "sera" if ora_roma().hour >= 15 else "mattina"
             print(f"Modalità farmacie ({quando})...")
-            ok = invia_messaggio(report_farmacie(quando))
+            print(f"TOKEN set={bool(TOKEN)} CHAT_ID={CHAT_ID!r} SUBS_URL set={bool(SUBS_URL)}")
+            msg = report_farmacie(quando)
+            if isinstance(msg, dict):
+                print("--- anteprima IT ---")
+                print((msg.get("it") or "")[:500])
+                print("--- anteprima DE ---")
+                print((msg.get("de") or "")[:300])
+            else:
+                print("--- anteprima ---")
+                print(str(msg)[:500])
+            ok = invia_messaggio(msg)
             if ok:
                 set_daily_flag("farm_sera" if quando == "sera" else "farm_mattina")
                 print("Farmacie inviate OK")
             else:
-                print("Invio farmacie FALLITO")
+                print("Invio farmacie FALLITO – vedi log sopra (destinatari/token/telegram)")
         else:
             controlla_emergenze()
     except Exception as e:
