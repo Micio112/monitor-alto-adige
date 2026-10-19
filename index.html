@@ -51,7 +51,7 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.25);
       border: 1px solid rgba(255,255,255,0.35);
     }
-    header h1 { font-size: 1.45rem; margin-bottom: 0; }
+    header h1 { font-size: 1.45rem; margin-bottom: 0; white-space: nowrap; }
     .btn-aed {
       display: inline-flex; align-items: center; justify-content: center; gap: 5px;
       flex-shrink: 0; padding: 8px 10px; border-radius: 10px;
@@ -120,9 +120,11 @@
     .meteo-testo { font-size: 0.86rem; color: #4a5568; margin-top: 4px; }
     .meteo-mappa { width: 100%; height: auto; border-radius: 10px; margin-top: 10px; border: 1px solid #e2e8f0; object-fit: contain; display: block; background: #f7fafc; }
     .settimana {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;
     }
-    @media (min-width: 560px) { .settimana { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); } }
+    @media (min-width: 560px) {
+      .settimana { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); }
+    }
     .giorno-mini {
       background: #edf2f7; border-radius: 8px; padding: 8px; text-align: center; font-size: 0.75rem;
     }
@@ -171,6 +173,15 @@
     .c-rosso { background: #e53e3e; } .c-arancione { background: #dd6b20; }
     .c-giallo { background: #d69e2e; } .c-verde { background: #38a169; } .c-blu { background: #3182ce; }
 
+    .farm-comune { margin-bottom: 14px; }
+    .farm-comune h3 {
+      font-size: 0.95rem; color: #276749; margin-bottom: 8px;
+      padding-bottom: 4px; border-bottom: 1px solid #c6f6d5;
+    }
+    .farmacia-addr a {
+      color: #2b6cb0; text-decoration: none; font-weight: 500;
+    }
+    .farmacia-addr a:active { opacity: 0.7; }
     .farmacia {
       border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 8px;
       background: #f0fff4;
@@ -338,7 +349,7 @@
     #install-bar .install-yes { background: #48bb78; color: #fff; }
     #install-bar .install-no { background: transparent; color: #cbd5e0; }
     @media (max-width: 600px) {
-      header h1 { font-size: 1.15rem; }
+      header h1 { font-size: 1.05rem; white-space: nowrap; letter-spacing: -0.02em; }
       header .site-logo { width: 38px; height: 38px; }
       nav.quick a { font-size: 0.72rem; padding: 8px 11px; }
       .btn-aed { font-size: 0.6rem; max-width: 80px; min-height: 44px; }
@@ -722,7 +733,17 @@
         [/ALLERTA VERDE/gi, "GRÜNE WARNUNG"],
         [/RISCHIO TEMPORALI/gi, "GEWITTERGEFAHR"],
         [/RISCHIO IDRAULICO/gi, "HYDRAULISCHES RISIKO"],
-        [/RISCHIO IDROGEOLOGICO/gi, "HYDROGEOLOGISCHES RISIKO"]
+        [/RISCHIO IDROGEOLOGICO/gi, "HYDROGEOLOGISCHES RISIKO"],
+        [/temporali forti/gi, "starke Gewitter"],
+        [/temporali/gi, "Gewitter"],
+        [/pioggia intensa/gi, "starkem Regen"],
+        [/vento forte/gi, "starkem Wind"],
+        [/neve/gi, "Schnee"],
+        [/valanghe/gi, "Lawinen"],
+        [/criticità/gi, "Kritikalität"],
+        [/Criticità/gi, "Kritikalität"],
+        [/provincia/gi, "Provinz"],
+        [/Provincia Autonoma di Bolzano/gi, "Autonome Provinz Bozen"]
       ].forEach(([re, to]) => { x = x.replace(re, to); });
       return x;
     }
@@ -734,6 +755,52 @@
       if (c.startsWith("ross")) return t("color_rossa");
       return colore;
     }
+
+    function nomeComuneAllerta(info, fallback) {
+      const raw = (info && (info.comune || info.name)) || fallback || "";
+      if (raw.indexOf("/") >= 0) {
+        const parts = raw.split("/").map(s => s.trim());
+        return lang === "de" ? (parts[1] || parts[0]) : (parts[0] || parts[1]);
+      }
+      // mapping comuni principali
+      const map = {
+        "bolzano": ["Bolzano", "Bozen"], "bozen": ["Bolzano", "Bozen"],
+        "merano": ["Merano", "Meran"], "meran": ["Merano", "Meran"],
+        "bressanone": ["Bressanone", "Brixen"], "brixen": ["Bressanone", "Brixen"],
+        "brunico": ["Brunico", "Bruneck"], "bruneck": ["Brunico", "Bruneck"],
+        "vipiteno": ["Vipiteno", "Sterzing"], "sterzing": ["Vipiteno", "Sterzing"],
+        "silandro": ["Silandro", "Schlanders"], "schlanders": ["Silandro", "Schlanders"],
+        "laives": ["Laives", "Leifers"], "leifers": ["Laives", "Leifers"]
+      };
+      const k = String(raw).toLowerCase().trim();
+      if (map[k]) return lang === "de" ? map[k][1] : map[k][0];
+      return raw;
+    }
+    function traduciZonaAllerta(zona) {
+      if (!zona) return "—";
+      if (lang !== "de") return zona;
+      let z = String(zona);
+      const pairs = [
+        [/Provincia Autonoma di Bolzano/gi, "Autonome Provinz Bozen"],
+        [/Provincia di Bolzano/gi, "Provinz Bozen"],
+        [/Alto Adige/gi, "Südtirol"],
+        [/Val d'Isarco/gi, "Eisacktal"],
+        [/Val Pusteria/gi, "Pustertal"],
+        [/Val Venosta/gi, "Vinschgau"],
+        [/Burgraviato/gi, "Burggrafenamt"],
+        [/Bassa Atesina/gi, "Unterland"],
+        [/Oltradige/gi, "Überetsch"],
+        [/Bolzano/gi, "Bozen"],
+        [/Merano/gi, "Meran"],
+        [/Bressanone/gi, "Brixen"],
+        [/Brunico/gi, "Bruneck"],
+        [/Vipiteno/gi, "Sterzing"],
+        [/Silandro/gi, "Schlanders"]
+      ];
+      pairs.forEach(([re, to]) => { z = z.replace(re, to); });
+      return z;
+    }
+
     function setLang(l) {
       lang = l === "de" ? "de" : "it";
       localStorage.setItem("monitor_lang", lang);
@@ -1036,19 +1103,38 @@
         });
         const lista = filtrati.length ? filtrati : on;
         if (!lista.length) { cont.innerHTML = "<p>" + t("farm_none") + "</p>"; return; }
-        let html = "";
+        const perComune = {};
         lista.forEach(f => {
-          const nome = (lang === "de" ? (f.PHAR_DESC_D || f.PHAR_DESC_I) : (f.PHAR_DESC_I || f.PHAR_DESC_D)) || t("farmacia");
-          const comune = lang === "de" ? (f.GEME_DESC_D || f.GEME_DESC_I || "") : (f.GEME_DESC_I || f.GEME_DESC_D || "");
-          const indir = lang === "de" ? (f.PHAR_ADRESS_D || f.PHAR_ADRESS_I || "") : (f.PHAR_ADRESS_I || f.PHAR_ADRESS_D || "");
-          const note = lang === "de" ? (f.TURN_NOTES_D || f.TURN_NOTES_I || "") : (f.TURN_NOTES_I || f.TURN_NOTES_D || "");
-          const tel = (f.PHAR_PHONE || "").toString().trim();
-          const telHref = tel ? ("tel:" + tel.replace(/[^\d+]/g, "")) : "";
-          html += `<div class="farmacia"><div class="farmacia-nome">${nome}</div>
-            <div class="farmacia-meta">${comune}${indir ? " · " + indir : ""}</div>
-            ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE ? `<div class="farmacia-meta">🕐 ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE}</div>` : ""}
-            ${note ? `<div class="farmacia-meta">${note}</div>` : ""}
-            ${telHref ? `<a class="btn-chiama" href="${telHref}">☎ Call ${tel}</a>` : ""}</div>`;
+          const comune = (lang === "de" ? (f.GEME_DESC_D || f.GEME_DESC_I) : (f.GEME_DESC_I || f.GEME_DESC_D)) || (lang === "de" ? "Sonstiges" : "Altro");
+          if (!perComune[comune]) perComune[comune] = [];
+          perComune[comune].push(f);
+        });
+        const ordine = Object.keys(perComune).sort((a, b) => a.localeCompare(b, loc()));
+        let html = "";
+        ordine.forEach(comune => {
+          html += `<div class="farm-comune"><h3>💊 ${comune}</h3>`;
+          perComune[comune].forEach(f => {
+            const nome = (lang === "de" ? (f.PHAR_DESC_D || f.PHAR_DESC_I) : (f.PHAR_DESC_I || f.PHAR_DESC_D)) || t("farmacia");
+            const indir = lang === "de" ? (f.PHAR_ADRESS_D || f.PHAR_ADRESS_I || "") : (f.PHAR_ADRESS_I || f.PHAR_ADRESS_D || "");
+            const note = lang === "de" ? (f.TURN_NOTES_D || f.TURN_NOTES_I || "") : (f.TURN_NOTES_I || f.TURN_NOTES_D || "");
+            const tel = (f.PHAR_PHONE || "").toString().trim();
+            const telHref = tel ? ("tel:" + tel.replace(/[^\d+]/g, "")) : "";
+            const mapsQ = encodeURIComponent([nome, indir, comune, "Alto Adige"].filter(Boolean).join(", "));
+            const mapsHref = indir ? ("https://www.google.com/maps/search/?api=1&query=" + mapsQ) : "";
+            html += `<div class="farmacia"><div class="farmacia-nome">${nome}</div>`;
+            if (indir) {
+              html += `<div class="farmacia-meta farmacia-addr">📍 <a href="${mapsHref}" target="_blank" rel="noopener">${indir}</a></div>`;
+            }
+            if (f.TURN_TIMETABLE || f.PHAR_TIMETABLE) {
+              html += `<div class="farmacia-meta">🕐 ${f.TURN_TIMETABLE || f.PHAR_TIMETABLE}</div>`;
+            }
+            if (note) html += `<div class="farmacia-meta">${note}</div>`;
+            if (telHref) {
+              html += `<a class="btn-chiama" href="${telHref}">📞 ${t("chiama")} ${tel}</a>`;
+            }
+            html += `</div>`;
+          });
+          html += `</div>`;
         });
         cont.innerHTML = html;
         if (agg) agg.textContent = t("agg_farm") + " · " + new Date().toLocaleString(lang === "de" ? "de-DE" : "it-IT");
@@ -1306,13 +1392,15 @@
           const info = data[nome]; if (!info) continue;
           const oggi = info.oggi?.allerta || {};
           const colore = (oggi.colore || "verde").toLowerCase();
-          if (["gialla","arancione","rossa"].includes(colore)) criticita.push(info.comune || nome);
+          const nomeShow = nomeComuneAllerta(info, nome);
+          if (["gialla","arancione","rossa"].includes(colore)) criticita.push(nomeShow);
           const labelCol = coloreAllertaLabel(colore);
           const desc = traduciAllertaTesto(oggi.descrizione || "—");
+          const zonaShow = traduciZonaAllerta(info.zona || "");
           html += `<div class="riga-allerta"><div class="allerta-header">
             <span class="badge" style="background:${coloreLivello(colore)}">${labelCol}</span>
-            <strong>${info.comune || nome}</strong></div>
-            <div class="allerta-dettaglio">${desc} · ${t("zona")}: ${info.zona || "—"}</div></div>`;
+            <strong>${nomeShow}</strong></div>
+            <div class="allerta-dettaglio">${desc} · ${t("zona")}: ${zonaShow}</div></div>`;
         }
         cont.innerHTML = html || `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
         agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
