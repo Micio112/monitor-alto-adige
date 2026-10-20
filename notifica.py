@@ -1593,6 +1593,77 @@ def controlla_allarmi_pc():
     return out
 
 
+
+def _in_finestra_sera():
+    """18:00–23:30 ora di Roma (finestra larga per ritardi Actions)."""
+    h = ora_roma().hour
+    m = ora_roma().minute
+    if h < 18:
+        return False
+    if h > 23:
+        return False
+    if h == 23 and m > 30:
+        return False
+    return True
+
+
+def invia_report_serali(force=False):
+    """Meteo di domani + farmacie di notte. Flag solo dopo invio riuscito.
+
+    force=True: ignora SOLO la fascia oraria (non il flag giornaliero).
+    Così gli slot dedicati UTC possono mandare anche se Actions è in ritardo,
+    senza reinviare ogni ora.
+    """
+    if not force and not _in_finestra_sera():
+        print(f"Fuori fascia sera ({ora_str()}) – skip report serali")
+        return
+
+    h, m = ora_roma().hour, ora_roma().minute
+    print(f"Report serali ({h:02d}:{m:02d} Roma, force={force})...")
+
+    # --- Meteo SERA (solo domani) ---
+    if has_daily_flag("meteo_sera"):
+        print("Meteo sera già inviato oggi")
+    else:
+        print("Invio meteo sera (solo domani)...")
+        bol = prendi_bollettino_meteo("sera")
+        if bol:
+            if invia_messaggio(bol):
+                set_daily_flag("meteo_sera")
+                print("Meteo sera OK")
+            else:
+                print("Meteo sera FALLITO – ritento al prossimo run")
+        else:
+            print("Meteo sera: bollettino non disponibile – ritento")
+
+    # --- Farmacie SERA (notte) ---
+    if has_daily_flag("farm_sera"):
+        print("Farmacie serali già inviate oggi")
+    else:
+        print("Invio farmacie notturne...")
+        farm = prendi_farmacie_turno("notte")
+        if not farm:
+            print("Nessuna classificato notturno – fallback a tutte le IS_TURN (comuni principali)")
+            farm = prendi_farmacie_turno("tutte")
+        msg = report_farmacie("sera")
+        testo_it = msg.get("it", "") if isinstance(msg, dict) else (msg or "")
+        testo_de = msg.get("de", "") if isinstance(msg, dict) else ""
+        vuoto = (
+            (not farm)
+            or ("Nessun dato" in testo_it)
+            or ("Keine Daten" in testo_de)
+        )
+        if vuoto:
+            print("Lista farmacie vuota – NON imposto flag, ritento")
+        else:
+            ok = invia_messaggio(msg)
+            if ok:
+                set_daily_flag("farm_sera")
+                print("Farmacie serali OK")
+            else:
+                print("Invio farmacie FALLITO – flag NON impostato")
+
+
 # ========== MAIN ==========
 def controlla_emergenze():
     print(f"[{ora_str()}] Controllo emergenze...")
@@ -1625,63 +1696,40 @@ def controlla_emergenze():
     if 7 <= h < 10:
         if not has_daily_flag("meteo_mattina"):
             print("Invio meteo mattina (oggi + prognosi)...")
-            t = prendi_bollettino_meteo("mattina")
-            if t:
-                invia_messaggio(t)
-                set_daily_flag("meteo_mattina")
-
-    # Meteo SERA 18:00–21:00 → solo domani
-    if 18 <= h < 21:
-        if not has_daily_flag("meteo_sera"):
-            print("Invio meteo sera (solo domani)...")
-            t = prendi_bollettino_meteo("sera")
-            if t:
-                invia_messaggio(t)
-                set_daily_flag("meteo_sera")
-
-    # Farmacie SERA: ogni giorno 18:00–23:30 (Roma).
-    # Finestra larga perché GitHub Actions (cron UTC) può ritardare molto.
-    # Flag solo dopo invio OK con almeno una farmacia in lista.
-    if 18 <= h < 24 and not (h == 23 and m > 30):
-        if not has_daily_flag("farm_sera"):
-            print(f"Invio farmacie notturne (fascia {h:02d}:{m:02d})...")
-            farm = prendi_farmacie_turno("notte")
-            if not farm:
-                # fallback: tutte quelle in turno nei comuni principali (meglio un messaggio che nessuno)
-                print("Nessuna classificato notturno – uso tutte le IS_TURN nei comuni principali")
-                farm = prendi_farmacie_turno("tutte")
-            msg = report_farmacie("sera")
-            # se report dice "nessun dato" e farm vuoto, non marcare flag
-            testo_it = msg.get("it", "") if isinstance(msg, dict) else (msg or "")
-            vuoto = (not farm) or ("Nessun dato" in testo_it) or ("Keine Daten" in (msg.get("de", "") if isinstance(msg, dict) else ""))
-            if vuoto:
-                print("Lista farmacie vuota – NON imposto flag, ritento")
-            else:
-                ok = invia_messaggio(msg)
-                if ok:
-                    set_daily_flag("farm_sera")
-                    print("Farmacie serali inviate OK")
+            bol = prendi_bollettino_meteo("mattina")
+            if bol:
+                if invia_messaggio(bol):
+                    set_daily_flag("meteo_mattina")
+                    print("Meteo mattina OK")
                 else:
-                    print("Invio farmacie FALLITO – flag NON impostato, ritento al prossimo run")
-        else:
-            print("Farmacie serali già inviate oggi")
+                    print("Meteo mattina FALLITO – ritento")
+            else:
+                print("Meteo mattina: bollettino non disponibile")
+
+    # Report serali (meteo domani + farmacie notte) – stessa logica del modo "sera"
+    invia_report_serali()
 
     # Farmacie MATTINA: solo weekend/festivi 7:30–10:00 → solo turno di GIORNO
     if is_weekend_or_holiday():
         if (h == 7 and m >= 30) or 8 <= h < 10:
             if not has_daily_flag("farm_mattina"):
                 print("Invio farmacie diurne (weekend/festivo)...")
-                invia_messaggio(report_farmacie("mattina"))
-                set_daily_flag("farm_mattina")
+                if invia_messaggio(report_farmacie("mattina")):
+                    set_daily_flag("farm_mattina")
 
 
 def invia_meteo_giornaliero(quando=None):
     if quando is None:
         quando = "sera" if ora_roma().hour >= 15 else "mattina"
-    t = prendi_bollettino_meteo(quando)
-    if t:
-        invia_messaggio(t)
-        set_daily_flag("meteo_sera" if quando == "sera" else "meteo_mattina")
+    bol = prendi_bollettino_meteo(quando)
+    if bol:
+        if invia_messaggio(bol):
+            set_daily_flag("meteo_sera" if quando == "sera" else "meteo_mattina")
+            print(f"Meteo {quando} OK")
+        else:
+            print(f"Meteo {quando} FALLITO")
+    else:
+        print(f"Meteo {quando}: bollettino non disponibile")
 
 
 if __name__ == "__main__":
@@ -1702,25 +1750,10 @@ if __name__ == "__main__":
                 print("Report viabilità inviato")
             else:
                 print("Invio report viabilità FALLITO")
-        elif modo == "farmacie":
-            quando = "sera" if ora_roma().hour >= 15 else "mattina"
-            print(f"Modalità farmacie ({quando})...")
-            print(f"TOKEN set={bool(TOKEN)} CHAT_ID={CHAT_ID!r} SUBS_URL set={bool(SUBS_URL)}")
-            msg = report_farmacie(quando)
-            if isinstance(msg, dict):
-                print("--- anteprima IT ---")
-                print((msg.get("it") or "")[:500])
-                print("--- anteprima DE ---")
-                print((msg.get("de") or "")[:300])
-            else:
-                print("--- anteprima ---")
-                print(str(msg)[:500])
-            ok = invia_messaggio(msg)
-            if ok:
-                set_daily_flag("farm_sera" if quando == "sera" else "farm_mattina")
-                print("Farmacie inviate OK")
-            else:
-                print("Invio farmacie FALLITO – vedi log sopra (destinatari/token/telegram)")
+        elif modo in ("farmacie", "sera", "evening"):
+            # Slot dedicato sera: SEMPRE meteo domani + farmacie (non solo farmacie)
+            print(f"Modalità sera/farmacie · TOKEN={bool(TOKEN)} CHAT_ID={CHAT_ID!r} SUBS={bool(SUBS_URL)}")
+            invia_report_serali(force=True)
         else:
             controlla_emergenze()
     except Exception as e:
