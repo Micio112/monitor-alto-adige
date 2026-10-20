@@ -52,14 +52,56 @@
       border: 1px solid rgba(255,255,255,0.35);
     }
     header h1 { font-size: 1.45rem; margin-bottom: 0; white-space: nowrap; }
-    .btn-aed {
-      display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-      flex-shrink: 0; padding: 8px 10px; border-radius: 10px;
-      background: #c53030; color: white; text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.3);
-      font-size: 0.68rem; font-weight: 700; line-height: 1.15; text-align: center; max-width: 92px;
+    .header-emerg {
+      display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; z-index: 2;
+      width: 86px;
     }
-    .btn-aed .heart { font-size: 1rem; }
+    .btn-aed, .btn-cpr {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; box-sizing: border-box; width: 100%;
+      color: #fff; text-decoration: none; border-radius: 10px;
+      font-size: 0.58rem; font-weight: 700; line-height: 1.2; text-align: center;
+      padding: 7px 5px; min-height: 48px; overflow: hidden;
+    }
+    .btn-aed {
+      background: #276749; border: 1px solid #9ae6b4;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .btn-cpr {
+      background: rgba(197,48,48,0.45); border: 1px solid rgba(255,200,200,0.55);
+    }
+    .btn-aed .heart, .btn-cpr .ico {
+      font-size: 0.95rem; line-height: 1; display: block;
+    }
+    .btn-aed span[data-i18n], .btn-cpr span[data-i18n] {
+      display: block; line-height: 1.15;
+    }
+    .cpr-panel {
+      background: #fff5f5; border: 2px solid #fc8181; border-radius: 12px; padding: 14px;
+    }
+    .cpr-panel .cpr-disclaimer {
+      font-size: 0.82rem; color: #9b2c2c; font-weight: 600; margin-bottom: 10px;
+    }
+    .cpr-panel .cpr-steps { margin: 0 0 12px 0; padding: 0; list-style: none; font-size: 0.9rem; }
+    .cpr-panel .cpr-steps li { margin-bottom: 8px; padding-left: 0; }
+    .cpr-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+    .cpr-controls button {
+      flex: 1; min-width: 120px; min-height: 48px; border: 0; border-radius: 10px;
+      font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    }
+    .cpr-start { background: #c53030; color: #fff; }
+    .cpr-stop { background: #4a5568; color: #fff; }
+    .cpr-display {
+      text-align: center; padding: 20px 12px; border-radius: 12px;
+      background: #1a202c; color: #fff; margin-top: 8px;
+    }
+    .cpr-display .cpr-beat {
+      font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em;
+      transition: transform 0.08s ease;
+    }
+    .cpr-display .cpr-beat.pulse { transform: scale(1.08); color: #feb2b2; }
+    .cpr-display .cpr-count { font-size: 2.4rem; font-weight: 800; margin: 8px 0; }
+    .cpr-display .cpr-hint { font-size: 0.9rem; opacity: 0.85; }
 
     .lang-switch {
       display: inline-flex; flex-shrink: 0; border-radius: 10px; overflow: hidden;
@@ -352,7 +394,8 @@
       header h1 { font-size: 1.05rem; white-space: nowrap; letter-spacing: -0.02em; }
       header .site-logo { width: 38px; height: 38px; }
       nav.quick a { font-size: 0.72rem; padding: 8px 11px; }
-      .btn-aed { font-size: 0.6rem; max-width: 80px; min-height: 44px; }
+      .btn-aed, .btn-cpr { font-size: 0.52rem; min-height: 46px; padding: 6px 4px; }
+      .header-emerg { width: 78px; }
       .scroll-box { max-height: 280px; }
     }
   </style>
@@ -367,9 +410,14 @@
       </svg>
     </div>
     <div class="header-top">
-      <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">
-        <span class="heart">♥</span><span data-i18n="btn_aed">I NEED<br>AN AED</span>
-      </a>
+      <div class="header-emerg">
+        <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">
+          <span class="heart">♥</span><span data-i18n="btn_aed">I NEED<br>AN AED</span>
+        </a>
+        <a class="btn-cpr" href="#cpr">
+          <span class="ico">🫀</span><span data-i18n="btn_cpr">CPR<br>INSTRUCTIONS</span>
+        </a>
+      </div>
       <div class="logo-title">
         <img class="site-logo" src="icon-192.png" width="44" height="44" alt="Logo Monitor Alto Adige">
         <h1>Monitor Alto Adige</h1>
@@ -385,6 +433,7 @@
       <a href="#allerte" data-i18n="nav_allerte">🚨 Allerte Meteo</a>
       <a href="#pronto-soccorso" data-i18n="nav_ps">🏥 Pronto Soccorso</a>
       <a href="#aed" data-i18n="nav_aed">❤️ AED</a>
+      <a href="#cpr" data-i18n="nav_cpr">🫀 CPR</a>
       <a href="#farmacie" data-i18n="nav_farm">💊 Farmacie</a>
       <a href="#viabilita" data-i18n="nav_via">🚗 Viabilità</a>
       <a href="#parcheggi" data-i18n="nav_park">🅿️ Parcheggi</a>
@@ -432,6 +481,31 @@
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
       <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener"><span data-i18n="link_aed">Mappa interattiva →</span></a>
     </section>
+    <section class="card" id="cpr">
+      <h2 data-i18n="h_cpr">🫀 Istruzioni RCP / CPR</h2>
+      <div class="cpr-panel">
+        <p class="cpr-disclaimer" data-i18n="cpr_disclaimer">Solo guida di supporto. In emergenza chiama subito il 112.</p>
+        <ul class="cpr-steps">
+          <li data-i18n="cpr_step1"></li>
+          <li data-i18n="cpr_step2"></li>
+          <li data-i18n="cpr_step3"></li>
+          <li data-i18n="cpr_step4"></li>
+          <li data-i18n="cpr_step5"></li>
+          <li data-i18n="cpr_step6"></li>
+          <li data-i18n="cpr_step7"></li>
+        </ul>
+        <div class="cpr-controls">
+          <button type="button" class="cpr-start" id="cpr-start" data-i18n="cpr_start">Avvia ritmo</button>
+          <button type="button" class="cpr-stop" id="cpr-stop" data-i18n="cpr_stop">Stop</button>
+        </div>
+        <div class="cpr-display" aria-live="polite">
+          <div class="cpr-beat" id="cpr-beat">—</div>
+          <div class="cpr-count" id="cpr-count">0 / 30</div>
+          <div class="cpr-hint" id="cpr-hint"></div>
+        </div>
+      </div>
+    </section>
+
     <section class="card" id="farmacie">
       <h2 data-i18n="h_farm">💊 Farmacie di turno</h2>
       <p class="aggiornamento" data-i18n="agg_farm">Notte (20–8) · weekend · festivi</p>
@@ -521,11 +595,11 @@
   </main>
 
   <footer>
-    <p data-i18n="footer_dati">Dati pubblici · SABES · SIAG (meteo &amp; allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer</p>
+    <p data-i18n="footer_dati">Dati pubblici · SABES · SIAG (meteo &amp; allarmi PC) · allerte.provincia.bz.it · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer</p>
     <p class="credit">Curated by Micio</p>
   </footer>
 
-  <a id="btn-instagram" href="https://www.instagram.com/allertealtoadige/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram @allertealtoadige">
+  <a id="btn-instagram" href="https://www.instagram.com/monitor.altoadige_sudtirol/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram @monitor.altoadige_sudtirol">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.5 6a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/></svg>
   </a>
   <a id="btn-telegram" href="https://t.me/" target="_blank" rel="noopener" aria-label="Telegram">
@@ -544,8 +618,22 @@
     const I18N = {
       it: {
         btn_aed: "I NEED<br>AN AED",
+        btn_cpr: "CPR<br>INSTRUCTIONS",
+        h_cpr: "🫀 Istruzioni RCP / CPR",
+        cpr_disclaimer: "Solo guida di supporto. In emergenza chiama subito il 112. Non sostituisce la formazione ufficiale.",
+        cpr_start: "Avvia ritmo compressioni",
+        cpr_stop: "Stop",
+        cpr_compress: "COMPRESSIONE",
+        cpr_vent: "2 ventilazioni",
+        cpr_step1: "1. Sicurezza: verifica che non ci sia pericolo per te e per la vittima.",
+        cpr_step2: "2. Controlla se risponde e se respira normalmente (max 10 secondi).",
+        cpr_step3: "3. Chiama o fai chiamare il 112. Metti in vivavoce.",
+        cpr_step4: "4. Compressioni toraciche: centro del torace, braccia tese, 5–6 cm di profondità.",
+        cpr_step5: "5. Ritmo: 100–120 compressioni al minuto (segui il suono).",
+        cpr_step6: "6. Ogni 30 compressioni: 2 ventilazioni (se addestrato), poi riprendi.",
+        cpr_step7: "7. Continua fino all’arrivo dei soccorsi o all’uso del DAE.",
         nav_pc: "🆘 Allarmi PC", nav_meteo: "🌤 Meteo", nav_allerte: "🚨 Allerte Meteo",
-        nav_ps: "🏥 Pronto Soccorso", nav_aed: "❤️ AED", nav_farm: "💊 Farmacie",
+        nav_ps: "🏥 Pronto Soccorso", nav_aed: "❤️ AED", nav_cpr: "🫀 CPR", nav_farm: "💊 Farmacie",
         nav_via: "🚗 Viabilità", nav_park: "🅿️ Parcheggi", nav_numeri: "📞 Numeri e Link utili",
         nav_chi: "👤 Chi sono", nav_contatti: "✉️ Contatti",
         h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
@@ -562,7 +650,7 @@
         app_aed_desc: "Trova i defibrillatori pubblici vicino a te",
         h_chi: "👤 Chi sono", h_contatti: "✉️ Contatti",
         agg_contatti: "Segnalazioni bug · impressum · suggerimenti",
-        footer_dati: "Dati pubblici · SABES · SIAG (meteo & allarmi PC) · allertameteo.app · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer",
+        footer_dati: "Dati pubblici · SABES · SIAG (meteo & allarmi PC) · allerte.provincia.bz.it · Centrale Viabilità · Open Data Hub · OpenAEDMap · Farmacie Bürgernetz · RainViewer",
         install_title: "Installa come app", loading: "Caricamento…", wait: "Attendere…",
         farm_none: "Nessuna farmacia di turno nei comuni principali.",
         farm_err: "Errore farmacie.", farmacia: "Farmacia",
@@ -584,7 +672,7 @@
         err_pc: "Errore caricamento.", in_attesa: "in attesa",
         oggi: "Oggi", domani: "Domani", prognosi: "Prognosi", radar: "Radar",
         radar_full: "Apri radar a schermo intero →", meteo_uff: "Meteo ufficiale →",
-        no_allerta: "Nessuna allerta attiva", zona: "Zona",
+        no_allerta: "Nessuna allerta attiva", zona: "Zona", link_allerte_uff: "Bollettino ufficiale Provincia →",
         pc_none: "Al momento non c'è alcun avviso di protezione civile.",
         pc_none_agg: "Nessun avviso", pc_read: "Leggi sul sito ufficiale →", pc_open: "Apri portale ufficiale →",
         pc_title_fallback: "Comunicato di Protezione Civile",
@@ -604,12 +692,26 @@
         ban_inc: "Incidente",
         ban_inc_n: "Incidenti",
         chi_sono_html: "<p>Mi chiamo Michel, per gli amici Micio, e sono originario di Bolzano. Vigile del fuoco Volontario ed operatore della CRP-CRI, da diverso tempo pensavo che fosse difficoltoso ed a volte macchinoso dover ricercare nel web varie informazioni utili.</p><p>Per questo motivo ho inizialmente creato un piccolo sito privato ed un Bot su Telegram per inviare alcune info e news di base a me e ad una cerchia di amici stretti. Dopo alcuni feedback, motivato dalla monotonia di una settimana influenzato a casa e dal piacere di poter essere utile, ho creato questo sito / WebApp come strumento di utilità dove si possono trovare tutte le informazioni utili in un solo posto.</p><p>Ho anche migliorato e rilasciato pubblicamente il Bot su Telegram, in modo da poter recapitare notifiche del sito su aggiornamenti importanti e novità. Spero vi piaccia e vi possa esser utile, fatemi sapere cosa ne pensate e se vorreste vedere qualcos’altro.</p><p><b>Buon Monitoraggio!</b></p>",
-        contatti_html: "Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oppure scrivimi in privato su Instagram:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/allertealtoadige/\" target=\"_blank\" rel=\"noopener\">📸 DM su Instagram</a>"
+        contatti_html: "Per segnalare un problema, proporre un miglioramento o richieste relative all’impressum / informazioni sul servizio, scrivi a:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oppure scrivimi in privato su Instagram:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/monitor.altoadige_sudtirol/\" target=\"_blank\" rel=\"noopener\">📸 DM su Instagram</a>"
       },
       de: {
         btn_aed: "I NEED<br>AN AED",
+        btn_cpr: "CPR<br>ANLEITUNG",
+        h_cpr: "🫀 CPR / Reanimation – Kurzanleitung",
+        cpr_disclaimer: "Nur Unterstützung. Im Notfall sofort 112 rufen. Ersetzt keine offizielle Ausbildung.",
+        cpr_start: "Kompressionsrhythmus starten",
+        cpr_stop: "Stop",
+        cpr_compress: "KOMPRESSION",
+        cpr_vent: "2 Beatmungen",
+        cpr_step1: "1. Sicherheit: prüfe, dass keine Gefahr für dich und das Opfer besteht.",
+        cpr_step2: "2. Prüfe Reaktion und normale Atmung (max. 10 Sekunden).",
+        cpr_step3: "3. Rufe 112 oder lass anrufen. Lautsprecher einschalten.",
+        cpr_step4: "4. Thoraxkompressionen: Mitte des Brustkorbs, gestreckte Arme, 5–6 cm tief.",
+        cpr_step5: "5. Tempo: 100–120 Kompressionen/Min. (dem Ton folgen).",
+        cpr_step6: "6. Alle 30 Kompressionen: 2 Beatmungen (wenn ausgebildet), dann weiter.",
+        cpr_step7: "7. Weiter bis Rettungskräfte eintreffen oder AED eingesetzt wird.",
         nav_pc: "🆘 Zivilschutz", nav_meteo: "🌤 Wetter", nav_allerte: "🚨 Wetterwarnungen",
-        nav_ps: "🏥 EH", nav_aed: "❤️ AED", nav_farm: "💊 Apotheken",
+        nav_ps: "🏥 EH", nav_aed: "❤️ AED", nav_cpr: "🫀 CPR", nav_farm: "💊 Apotheken",
         nav_via: "🚗 Verkehr", nav_park: "🅿️ Parkplätze", nav_numeri: "📞 Nummern & Links",
         nav_chi: "👤 Über mich", nav_contatti: "✉️ Kontakt",
         h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
@@ -626,7 +728,7 @@
         app_aed_desc: "Öffentliche Defibrillatoren in deiner Nähe finden",
         h_chi: "👤 Über mich", h_contatti: "✉️ Kontakt",
         agg_contatti: "Fehlermeldungen · Impressum · Vorschläge",
-        footer_dati: "Öffentliche Daten · SABES · SIAG (Wetter & Zivilschutz) · allertameteo.app · Verkehrszentrale · Open Data Hub · OpenAEDMap · Apotheken Bürgernetz · RainViewer",
+        footer_dati: "Öffentliche Daten · SABES · SIAG (Wetter & Zivilschutz) · allerte.provincia.bz.it · Verkehrszentrale · Open Data Hub · OpenAEDMap · Apotheken Bürgernetz · RainViewer",
         install_title: "Als App installieren", loading: "Laden…", wait: "Bitte warten…",
         farm_none: "Keine Bereitschaftsapotheke in den Hauptgemeinden.",
         farm_err: "Fehler bei den Apotheken.", farmacia: "Apotheke",
@@ -650,7 +752,7 @@
         err_pc: "Ladefehler.", in_attesa: "wartend",
         oggi: "Heute", domani: "Morgen", prognosi: "Prognose", radar: "Radar",
         radar_full: "Radar im Vollbild öffnen →", meteo_uff: "Offizielles Wetter →",
-        no_allerta: "Keine aktive Warnung", zona: "Zone",
+        no_allerta: "Keine aktive Warnung", zona: "Zone", link_allerte_uff: "Offizielles Provinz-Bulletin →",
         pc_none: "Derzeit liegt keine Zivilschutzwarnung vor.",
         pc_none_agg: "Keine Warnung", pc_read: "Auf der offiziellen Seite lesen →", pc_open: "Offizielles Portal öffnen →",
         pc_title_fallback: "Zivilschutzmitteilung",
@@ -670,7 +772,7 @@
         ban_inc: "Unfall",
         ban_inc_n: "Unfälle",
         chi_sono_html: "<p>Ich heiße Michel, für Freunde Micio, und komme aus Bozen. Als Freiwilliger Feuerwehrmann und Mitarbeiter der LKS-IRK fand ich es oft umständlich, nützliche Informationen im Web zusammensuchen zu müssen.</p><p>Deshalb habe ich zunächst eine kleine private Website und einen Telegram-Bot für mich und enge Freunde erstellt. Nach Feedback und einer grippalen Woche zu Hause – und aus Freude, nützlich zu sein – habe ich diese Website / WebApp als praktisches Tool gebaut, in dem man viele wichtige Infos an einem Ort findet.</p><p>Den Telegram-Bot habe ich verbessert und öffentlich gemacht, damit wichtige Updates und Neuigkeiten per Benachrichtigung ankommen. Ich hoffe, das Angebot gefällt und hilft – Feedback und Wünsche sind willkommen.</p><p><b>Gutes Monitoring!</b></p>",
-        contatti_html: "Für Fehlermeldungen, Verbesserungsvorschläge oder Anfragen zum Impressum / Service schreib an:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oder per Instagram-DM:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/allertealtoadige/\" target=\"_blank\" rel=\"noopener\">📸 DM auf Instagram</a>"
+        contatti_html: "Für Fehlermeldungen, Verbesserungsvorschläge oder Anfragen zum Impressum / Service schreib an:<br><br><a href=\"mailto:monitor.altoadige@gmail.com\">monitor.altoadige@gmail.com</a><br><br>Oder per Instagram-DM:<br><a class=\"btn-ig-dm\" href=\"https://www.instagram.com/monitor.altoadige_sudtirol/\" target=\"_blank\" rel=\"noopener\">📸 DM auf Instagram</a>"
       }
     };
     function t(key) {
@@ -870,9 +972,36 @@
     function coloreLivello(c) {
       return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
     }
+    function formatDataGGMMYYYY(val) {
+      if (val == null || val === "") return "—";
+      try {
+        let d;
+        if (typeof val === "number") d = new Date(val > 1e12 ? val : val * 1000);
+        else {
+          const s = String(val).trim();
+          if (/^\d{4}-\d{2}-\d{2}/.test(s)) d = new Date(s.slice(0, 10) + "T12:00:00");
+          else d = new Date(s);
+        }
+        if (isNaN(d.getTime())) return String(val);
+        const dd = String(d.getDate()).padStart(2, "0");
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        return dd + "/" + mm + "/" + d.getFullYear();
+      } catch (e) { return String(val); }
+    }
+    function formatGiornoSettimana(iso) {
+      try {
+        const s = String(iso).slice(0, 10);
+        const d = new Date(s + "T12:00:00");
+        if (isNaN(d.getTime())) return "—";
+        return d.toLocaleDateString(loc(), { weekday: "long" });
+      } catch (e) { return "—"; }
+    }
     function formatDataIT(iso) {
-      try { return new Date(iso).toLocaleDateString("it-IT", { weekday: "short", day: "2-digit", month: "short" }); }
-      catch { return iso || "—"; }
+      const g = formatGiornoSettimana(iso);
+      const data = formatDataGGMMYYYY(iso);
+      if (g === "—" && data === "—") return "—";
+      if (g === "—") return data;
+      return g.charAt(0).toUpperCase() + g.slice(1) + " " + data;
     }
     function isFarmacieVisibili() {
       const d = new Date();
@@ -1304,7 +1433,7 @@
           const testoEvnt = lang === "de" ? (ev.placeDe || ev.placeIt || "") : (ev.placeIt || ev.placeDe || "");
           html += `<div class="evento ${cls}">
             <div class="evento-titolo">${pref}${strada || (lang === "de" ? "Ereignis" : "Evento")}</div>
-            <div class="evento-meta">${grad}${zona ? " · " + zona : ""} · ${ev.beginDate || ""}${ev.endDate ? " → " + ev.endDate : ""}</div>
+            <div class="evento-meta">${grad}${zona ? " · " + zona : ""} · ${formatDataGGMMYYYY(ev.beginDate)}${ev.endDate ? " → " + formatDataGGMMYYYY(ev.endDate) : ""}</div>
             <div class="evento-testo">${testoEvnt}</div></div>`;
         });
         cont.innerHTML = html || "<p style='padding:12px'>" + t("via_empty") + "</p>";
@@ -1381,31 +1510,104 @@
       const cont = document.querySelector(".lista-allerte");
       const agg = document.querySelector("#allerte .aggiornamento");
       const criticita = [];
+      const L = lang === "de" ? "de" : "it";
+      const livelloNome = {
+        VERDE: t("color_verde"), GIALLO: t("color_gialla"), GIALLA: t("color_gialla"),
+        ARANCIONE: t("color_arancione"), ROSSO: t("color_rossa"), ROSSA: t("color_rossa")
+      };
+      const livelloCss = {
+        VERDE: "verde", GIALLO: "gialla", GIALLA: "gialla",
+        ARANCIONE: "arancione", ROSSO: "rossa", ROSSA: "rossa"
+      };
       try {
-        const res = await fetch(`https://allertameteo.app/api/alert/${COMUNI.join(",")}`);
+        const now = new Date();
+        const iso = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+        const url = "https://cms-lwz.afbs.it/fileadmin/export/risk_potential_" + iso + ".json?language=" + L;
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
         const dati = await res.json();
-        if (!dati.success) { cont.innerHTML = "<p>" + t("err_allerte") + "</p>"; return; }
-        let data = dati.data;
-        if (data && data.comune) data = { [data.comune]: data };
+        const phenomena = Array.isArray(dati.phenomena) ? dati.phenomena : [];
         let html = "";
-        for (const nome in data) {
-          const info = data[nome]; if (!info) continue;
-          const oggi = info.oggi?.allerta || {};
-          const colore = (oggi.colore || "verde").toLowerCase();
-          const nomeShow = nomeComuneAllerta(info, nome);
-          if (["gialla","arancione","rossa"].includes(colore)) criticita.push(nomeShow);
-          const labelCol = coloreAllertaLabel(colore);
-          const desc = traduciAllertaTesto(oggi.descrizione || "—");
-          const zonaShow = traduciZonaAllerta(info.zona || "");
-          html += `<div class="riga-allerta"><div class="allerta-header">
-            <span class="badge" style="background:${coloreLivello(colore)}">${labelCol}</span>
-            <strong>${nomeShow}</strong></div>
-            <div class="allerta-dettaglio">${desc} · ${t("zona")}: ${zonaShow}</div></div>`;
+        let maxLevel = 0;
+        phenomena.forEach(ph => {
+          const levels = ph.warningLevels || [];
+          // Livello ATTIVO = quello con comuni assegnati (muni > 0), non il max del template
+          let active = null;
+          levels.forEach(lv => {
+            const n = (lv.municipalities || []).length;
+            if (n > 0) {
+              if (!active || (lv.level || 0) > (active.level || 0)) active = lv;
+            }
+          });
+          if (!active) {
+            active = levels.find(l => String(l.identifier || "").toUpperCase() === "VERDE") || levels[0];
+          }
+          if (!active) return;
+          const id = String(active.identifier || "VERDE").toUpperCase();
+          const colKey = livelloCss[id] || "verde";
+          const labelCol = livelloNome[id] || id;
+          const titolo = (ph.title && (ph.title[L] || ph.title.it || ph.title.de)) || ph.identifier || "";
+          const sottotit = (active.title && (active.title[L] || active.title.it || active.title.de)) || "";
+          const liv = active.level || 0;
+          if (liv > 0) {
+            maxLevel = Math.max(maxLevel, liv);
+            criticita.push(titolo);
+          }
+          // Mostra solo fenomeni con allerta attiva (giallo+) oppure tutti se tutto verde (riepilogo)
+          // Regola: elenca sempre i fenomeni di OGGI con il livello reale
+          html += `<div class="riga-allerta">
+            <div class="allerta-header">
+              <span class="badge" style="background:${coloreLivello(colKey)}">${labelCol}</span>
+              <strong>${titolo}</strong>
+            </div>
+            <div class="allerta-dettaglio">${sottotit || "—"}</div>
+          </div>`;
+        });
+        if (!html) throw new Error("nessun fenomeno");
+        let head = "";
+        if (maxLevel === 0) {
+          head = `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
         }
-        cont.innerHTML = html || `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
-        agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
-        window.__criticitaAllerte = criticita; mergeBanner();
-      } catch (e) { cont.innerHTML = "<p>" + t("err_conn") + "</p>"; }
+        const linkUff = L === "de"
+          ? "https://warnungen.provinz.bz.it/de/reports/risk-potential/list"
+          : "https://allerte.provincia.bz.it/it/reports/risk-potential/list";
+        cont.innerHTML = head + html +
+          `<a class="link-ext" href="${linkUff}" target="_blank" rel="noopener">${t("link_allerte_uff")}</a>`;
+        if (agg) {
+          const pub = dati.date ? formatDataGGMMYYYY(dati.date > 1e12 ? dati.date : dati.date * 1000) : formatDataGGMMYYYY(iso);
+          agg.textContent = t("updated") + ": " + pub + " · " + formatDataIT(iso);
+        }
+        window.__criticitaAllerte = [...new Set(criticita)].slice(0, 8);
+        mergeBanner();
+      } catch (e) {
+        console.error("allerte ufficiale", e);
+        // fallback allertameteo – solo oggi
+        try {
+          const res = await fetch("https://allertameteo.app/api/alert/" + COMUNI.join(","));
+          const dati = await res.json();
+          if (!dati.success) throw new Error("fallback fail");
+          let data = dati.data;
+          if (data && data.comune) data = { [data.comune]: data };
+          let html = "";
+          for (const nome in data) {
+            const info = data[nome]; if (!info) continue;
+            const oggi = (info.oggi && info.oggi.allerta) || {};
+            const colore = (oggi.colore || "verde").toLowerCase();
+            const nomeShow = nomeComuneAllerta(info, nome);
+            if (["gialla","arancione","rossa"].includes(colore)) criticita.push(nomeShow);
+            html += `<div class="riga-allerta"><div class="allerta-header">
+              <span class="badge" style="background:${coloreLivello(colore)}">${coloreAllertaLabel(colore)}</span>
+              <strong>${nomeShow}</strong></div>
+              <div class="allerta-dettaglio">${traduciAllertaTesto(oggi.descrizione || "—")}</div></div>`;
+          }
+          cont.innerHTML = html || `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
+          if (agg) agg.textContent = t("updated") + ": " + formatDataGGMMYYYY(new Date().toISOString());
+          window.__criticitaAllerte = [...new Set(criticita)].slice(0, 8);
+          mergeBanner();
+        } catch (e2) {
+          cont.innerHTML = "<p>" + t("err_allerte") + "</p>";
+        }
+      }
     }
 
     async function fetchAEDFeatures() {
@@ -1527,10 +1729,97 @@
       }
     }
 
+
+    // ----- CPR metronome: 110 compressioni/min + 2 ventilazioni da 2s -----
+    let cprTimer = null;
+    let cprCount = 0;
+    let cprMode = "compress"; // compress | vent1 | vent2
+    let cprAudioCtx = null;
+    function cprBeep(kind) {
+      // kind: "compress" | "vent"
+      try {
+        if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = cprAudioCtx;
+        if (ctx.state === "suspended") ctx.resume();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = kind === "vent" ? "triangle" : "sine";
+        o.connect(g); g.connect(ctx.destination);
+        o.frequency.value = kind === "vent" ? 520 : 920;
+        const now = ctx.currentTime;
+        const dur = kind === "vent" ? 0.35 : 0.07;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(kind === "vent" ? 0.28 : 0.22, now + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+        o.start(now); o.stop(now + dur + 0.02);
+      } catch (e) {}
+    }
+    function cprUpdateUI(label, countText, hintText) {
+      const beat = document.getElementById("cpr-beat");
+      const countEl = document.getElementById("cpr-count");
+      const hint = document.getElementById("cpr-hint");
+      if (beat) {
+        beat.textContent = label;
+        beat.classList.add("pulse");
+        setTimeout(() => beat.classList.remove("pulse"), 120);
+      }
+      if (countEl) countEl.textContent = countText;
+      if (hint) hint.textContent = hintText || "";
+    }
+    function cprScheduleNext(ms) {
+      if (cprTimer) clearTimeout(cprTimer);
+      cprTimer = setTimeout(cprTick, ms);
+    }
+    function cprTick() {
+      if (cprMode === "compress") {
+        cprCount++;
+        cprBeep("compress");
+        cprUpdateUI(t("cpr_compress"), cprCount + " / 30", (30 - cprCount) + " → " + t("cpr_vent"));
+        if (cprCount >= 30) {
+          cprMode = "vent1";
+          cprScheduleNext(200); // breve pausa prima delle ventilazioni
+        } else {
+          cprScheduleNext(545); // ~110/min
+        }
+      } else if (cprMode === "vent1") {
+        cprBeep("vent");
+        cprUpdateUI(t("cpr_vent") + " 1/2", "30 / 30", t("cpr_vent"));
+        cprMode = "vent2";
+        cprScheduleNext(2000); // 2 secondi
+      } else if (cprMode === "vent2") {
+        cprBeep("vent");
+        cprUpdateUI(t("cpr_vent") + " 2/2", "30 / 30", t("cpr_vent"));
+        cprMode = "compress";
+        cprCount = 0;
+        cprScheduleNext(2000); // 2 secondi seconda ventilazione, poi riprende
+      }
+    }
+    function cprStart() {
+      cprStop();
+      cprCount = 0;
+      cprMode = "compress";
+      cprTick();
+    }
+    function cprStop() {
+      if (cprTimer) { clearTimeout(cprTimer); cprTimer = null; }
+      cprMode = "compress";
+      cprCount = 0;
+      const beat = document.getElementById("cpr-beat");
+      if (beat) { beat.textContent = "—"; beat.classList.remove("pulse"); }
+      const countEl = document.getElementById("cpr-count");
+      if (countEl) countEl.textContent = "0 / 30";
+      const hint = document.getElementById("cpr-hint");
+      if (hint) hint.textContent = "";
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
       });
+      const cprS = document.getElementById("cpr-start");
+      const cprT = document.getElementById("cpr-stop");
+      if (cprS) cprS.addEventListener("click", cprStart);
+      if (cprT) cprT.addEventListener("click", cprStop);
       applyLang();
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
       caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
