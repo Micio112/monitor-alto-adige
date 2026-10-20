@@ -5,21 +5,26 @@ on:
     # Controlli generali ogni 30 minuti (UTC)
     - cron: '*/30 * * * *'
 
-    # Report mattina (backup se il job */30 è in ritardo)
-    # UTC → Roma CEST (+2): +2h | CET (+1): +1h
+    # Report mattina (backup)
+    # UTC → Roma CEST (+2) / CET (+1)
     - cron: '0 5 * * *'
     - cron: '30 5 * * *'
     - cron: '0 6 * * *'
     - cron: '0 7 * * *'
     - cron: '0 9 * * *'
 
-    # Farmacie SERA – slot dedicati (ogni giorno, inclusa infrasettimana)
+    # SERA dedicata: meteo di domani + farmacie di notte
+    # (modo=sera → invia entrambi anche se il job */30 è in ritardo)
+    # 16:00 UTC ≈ 18:00 Roma CEST | 17:00 CET
     # 17:00 UTC ≈ 19:00 Roma CEST | 18:00 CET
     # 18:00 UTC ≈ 20:00 Roma CEST | 19:00 CET
-    # 19:30 UTC ≈ 21:30 Roma CEST | 20:30 CET
+    # 19:00 UTC ≈ 21:00 Roma CEST | 20:00 CET
+    # 20:00 UTC ≈ 22:00 Roma CEST | 21:00 CET
+    - cron: '0 16 * * *'
     - cron: '0 17 * * *'
     - cron: '0 18 * * *'
-    - cron: '30 19 * * *'
+    - cron: '0 19 * * *'
+    - cron: '0 20 * * *'
 
     # Farmacie weekend mattina (turno diurno) – 6:30 UTC ≈ 8:30 CEST
     - cron: '30 6 * * 0,6'
@@ -27,7 +32,7 @@ on:
   workflow_dispatch:
     inputs:
       modo:
-        description: 'check | meteo | viabilita | farmacie'
+        description: 'check | meteo | meteo_sera | viabilita | farmacie | sera'
         required: false
         default: 'check'
 
@@ -58,8 +63,11 @@ jobs:
           SCHEDULE="${{ github.event.schedule }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "modo=${{ github.event.inputs.modo || 'check' }}" >> "$GITHUB_OUTPUT"
-          elif [ "$SCHEDULE" = "0 17 * * *" ] || [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "30 19 * * *" ]; then
-            echo "modo=farmacie" >> "$GITHUB_OUTPUT"
+          elif [ "$SCHEDULE" = "0 16 * * *" ] || [ "$SCHEDULE" = "0 17 * * *" ] || \
+               [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "0 19 * * *" ] || \
+               [ "$SCHEDULE" = "0 20 * * *" ]; then
+            # Slot sera: meteo domani + farmacie notte
+            echo "modo=sera" >> "$GITHUB_OUTPUT"
           elif [ "$SCHEDULE" = "30 6 * * 0,6" ]; then
             echo "modo=farmacie" >> "$GITHUB_OUTPUT"
           else
