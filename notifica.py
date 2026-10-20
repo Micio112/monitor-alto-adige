@@ -517,56 +517,146 @@ def controlla_ps():
     return messaggi
 
 
-# ========== ALLERTE METEO (1 volta per evento) ==========
+# ========== ALLERTE METEO ufficiali CFP (oggi, solo non-verdi) ==========
+def _active_warning_level(levels):
+    """Livello attivo = quello con comuni assegnati; altrimenti VERDE."""
+    active = None
+    for lv in levels or []:
+        n = len(lv.get("municipalities") or [])
+        if n > 0:
+            if active is None or (lv.get("level") or 0) > (active.get("level") or 0):
+                active = lv
+    if active is None:
+        for lv in levels or []:
+            if str(lv.get("identifier") or "").upper() in ("VERDE", "GREEN"):
+                return lv
+        return (levels or [None])[0]
+    return active
+
+
 def prendi_allerte_nazionali():
+    """Bollettino ufficiale allerte.provincia.bz.it – solo OGGI, solo livelli > verde."""
     try:
-        url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
-        dati = requests.get(url, timeout=15).json()
-        if not dati.get("success"):
-            return []
-        data = dati.get("data", {})
-        if isinstance(data, dict) and "comune" in data:
-            data = {data["comune"]: data}
+        oggi = date.today().isoformat()
+        url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
+        url_de = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=de"
+        dati = requests.get(url, timeout=20).json()
+        try:
+            dati_de = requests.get(url_de, timeout=15).json()
+        except Exception:
+            dati_de = dati
+        ph_de = {p.get("identifier"): p for p in (dati_de.get("phenomena") or [])}
         out = []
         nl = chr(10)
-        for nome, info in data.items():
-            if not info:
+        for ph in dati.get("phenomena") or []:
+            active = _active_warning_level(ph.get("warningLevels") or [])
+            if not active:
                 continue
-            oggi = info.get("oggi", {}).get("allerta", {})
-            colore = (oggi.get("colore") or "verde").lower()
+            liv = active.get("level") or 0
+            if liv <= 0:
+                continue
+            ident = str(active.get("identifier") or "").upper()
+            colore = {"GIALLO": "gialla", "GIALLA": "gialla", "ARANCIONE": "arancione",
+                      "ROSSO": "rossa", "ROSSA": "rossa"}.get(ident, ident.lower())
             if colore not in LIVELLI_ALLERTA:
                 continue
-            key = f"allerta-{info.get('comune', nome)}-{colore}-{(oggi.get('descrizione') or '')[:40]}"
+            titolo_it = (ph.get("title") or {}).get("it") or ph.get("identifier") or ""
+            titolo_de = (ph_de.get(ph.get("identifier"), ph).get("title") or {}).get("de") or titolo_it
+            sott_it = (active.get("title") or {}).get("it") or ""
+            sott_de = (active.get("title") or {}).get("de") or sott_it
+            key = f"cfp-allerta-{ph.get('identifier')}-{ident}-{oggi}"
             if already_sent(key, ttl_hours=20):
                 continue
             emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⚠️")
-            desc = oggi.get("descrizione", "") or ""
-            comune = info.get("comune", nome)
-            zona = info.get("zona", "—")
             col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
+            link = "https://allerte.provincia.bz.it/it/reports/risk-potential/list"
+            link_de = "https://warnungen.provinz.bz.it/de/reports/risk-potential/list"
             it = (
                 f"{emoji} <b>Allerta {colore.capitalize()}</b>" + nl
-                + f"Comune: {comune}" + nl
-                + f"{desc}" + nl
-                + f"Zona: {zona}"
+                + f"<b>{titolo_it}</b>" + nl
+                + (sott_it + nl if sott_it else "")
+                + f"📅 {oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}" + nl
+                + f"🔗 {link}"
             )
             de = (
                 f"{emoji} <b>Wetterwarnung {col_de}</b>" + nl
-                + f"Gemeinde: {comune}" + nl
-                + f"{desc}" + nl
-                + f"Zone: {zona}"
+                + f"<b>{titolo_de}</b>" + nl
+                + (sott_de + nl if sott_de else "")
+                + f"📅 {oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}" + nl
+                + f"🔗 {link_de}"
             )
             out.append({"it": it, "de": de})
+            print(f"Allerta CFP: {titolo_it} → {ident}")
         return out
     except Exception as e:
-        print("Errore allerte:", e)
-        return []
+        print("Errore allerte CFP:", e)
+        # fallback allertameteo
+        try:
+            url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
+            dati = requests.get(url, timeout=15).json()
+            if not dati.get("success"):
+                return []
+            data = dati.get("data", {})
+            if isinstance(data, dict) and "comune" in data:
+                data = {data["comune"]: data}
+            out = []
+            nl = chr(10)
+            for nome, info in data.items():
+                if not info:
+                    continue
+                oggi_a = info.get("oggi", {}).get("allerta", {})
+                colore = (oggi_a.get("colore") or "verde").lower()
+                if colore not in LIVELLI_ALLERTA:
+                    continue
+                key = f"allerta-{info.get('comune', nome)}-{colore}-{(oggi_a.get('descrizione') or '')[:40]}"
+                if already_sent(key, ttl_hours=20):
+                    continue
+                emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⚠️")
+                desc = oggi_a.get("descrizione", "") or ""
+                comune = info.get("comune", nome)
+                col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
+                out.append({
+                    "it": f"{emoji} <b>Allerta {colore.capitalize()}</b>{nl}Comune: {comune}{nl}{desc}",
+                    "de": f"{emoji} <b>Wetterwarnung {col_de}</b>{nl}Gemeinde: {comune}{nl}{desc}",
+                })
+            return out
+        except Exception as e2:
+            print("Errore allerte fallback:", e2)
+            return []
 
 
 # ========== TEMPORALI (1 volta per comune/evento) ==========
 def controlla_temporali():
-    """Usa descrizione allerta / bollettino SIAG se parla di temporali forti."""
+    """Temporali: prima CFP ufficiale (RISK_TEMPORALE), poi fallback allertameteo."""
     messaggi = []
+    try:
+        oggi = date.today().isoformat()
+        url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
+        dati = requests.get(url, timeout=15).json()
+        for ph in dati.get("phenomena") or []:
+            if ph.get("identifier") != "RISK_TEMPORALE":
+                continue
+            active = _active_warning_level(ph.get("warningLevels") or [])
+            if not active or (active.get("level") or 0) <= 0:
+                continue
+            ident = str(active.get("identifier") or "").upper()
+            colore = {"GIALLO": "gialla", "ARANCIONE": "arancione", "ROSSO": "rossa"}.get(ident, "gialla")
+            key = f"temporale-cfp-{ident}-{oggi}"
+            if already_sent(key, ttl_hours=12):
+                continue
+            titolo = (ph.get("title") or {}).get("it") or "Temporali forti"
+            titolo_de = (ph.get("title") or {}).get("de") or "Starke Gewitter"
+            sott = (active.get("title") or {}).get("it") or ""
+            sott_de = (active.get("title") or {}).get("de") or sott
+            nl = chr(10)
+            messaggi.append({
+                "it": f"⛈️ <b>Temporale / maltempo</b>{nl}{titolo}{nl}{sott}{nl}Livello: {colore}",
+                "de": f"⛈️ <b>Gewitter / Unwetter</b>{nl}{titolo_de}{nl}{sott_de}{nl}Stufe: {ident.title()}",
+            })
+            print(f"Temporale CFP: {ident}")
+            return messaggi
+    except Exception as e:
+        print("Temporali CFP:", e)
     try:
         url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
         dati = requests.get(url, timeout=15).json()
@@ -830,17 +920,13 @@ def is_coda_rallentamento(ev):
 
 
 def is_coda_notificabile(ev):
-    """PUSH: solo code/traffico live, non divieti/lavori etichettati come 'rallentamenti'.
-
-    Esclude tipici falsi positivi della Centrale Viabilità:
-    - divieti di peso/lunghezza (passi montani)
-    - senso unico alternato / cantieri / lavori
-    - restrizioni permanenti o di lunga durata
-    """
+    """PUSH: code/STAU live. Esclude lavori, divieti e avvisi generici 'rallentamenti'."""
     sub = (ev.get("subTycodeValue") or "").upper()
-    # Tipi strutturali: non sono code in tempo reale
-    if sub in ("BAUSTELLE", "SPERRE", "ALLGEMEIN"):
+    if sub in ("BAUSTELLE", "SPERRE", "ALLGEMEIN", "RADWEG_SPERRE", "VERANSTALTUNG", "FREI BEFAHRBAR"):
         return False
+    # STAU ufficiale = sempre notificabile
+    if sub == "STAU":
+        return True
 
     t = " ".join([
         str(ev.get("placeIt") or ""),
@@ -850,9 +936,9 @@ def is_coda_notificabile(ev):
         str(ev.get("subTycodeIt") or ""),
         str(ev.get("tycodeIt") or ""),
         str(ev.get("messageGradDescIt") or ""),
+        str(ev.get("messageGradDescDe") or ""),
     ]).lower()
 
-    # Falsi positivi: restrizioni e lavori (anche se la categoria dice "rallentamenti")
     escludi = (
         "divieto di transito", "divieto transito", "divieto per",
         "peso superiore", "lunghezza superiore", "rimorch",
@@ -860,18 +946,18 @@ def is_coda_notificabile(ev):
         "aperto giornalmente", "conclusiv", "confine provinciale",
         "non c'è una deviazione", "non c'e una deviazione",
         "veicoli di peso", "veicoli di lunghezza",
+        "in caso di coda o traffico",  # avviso generico A22/Austria
+        "corridoio di sal", "rettungsgasse",
+        "fiera di", "manifestazione",
     )
     if any(x in t for x in escludi):
         return False
 
-    # Accetta STAU (tipo ufficiale coda) oppure testo con coda/stau esplicito.
-    # NON usare solo "rallentament": la provincia lo mette su molti avvisi statici.
-    if sub == "STAU":
-        return True
     strong = (
-        "coda", "code ", " in coda", "stau", "stockung",
+        "coda di", "coda per", "code per", " in coda", "km di coda", "km coda",
+        "stau", "stockung", "im stau",
         "traffico rallentato", "lento scorrimento",
-        "mezzi pesanti in coda", "traffico intenso",
+        "mezzi pesanti in coda", "coda di mezzi",
     )
     return any(k in t for k in strong)
 
@@ -1218,14 +1304,14 @@ def nuove_chiusure_e_incidenti():
             continue
 
         if is_coda_notificabile(ev):
-            # solo pubblicate di recente
-            if not (0 <= delta <= 45 * 60):
+            # pubblicate nelle ultime 3 ore (GitHub Actions può ritardare)
+            if not (0 <= delta <= 3 * 3600):
                 continue
-            # escludi avvisi "cronici" iniziati da più di 12 ore
+            # escludi avvisi "cronici" iniziati da più di 18 ore
             begin = _parse_evento_dt(ev.get("beginDate"))
             if begin is not None:
                 age_begin = (ora - begin).total_seconds()
-                if age_begin > 12 * 3600:
+                if age_begin > 18 * 3600:
                     continue
             key_id = f"coda-{mid}"
             key_fp = _fingerprint_coda(ev)
@@ -1236,7 +1322,7 @@ def nuove_chiusure_e_incidenti():
     # Ordina dalle più recenti; applica rate limit globale
     code_candidati.sort(key=lambda x: x[0])  # delta crescente = più recente
     for delta, key_id, key_fp, ev in code_candidati:
-        if not _coda_rate_ok(max_n=3, window_hours=2):
+        if not _coda_rate_ok(max_n=5, window_hours=2):
             print(f"Anti-spam code: rate limit raggiunto, salto {key_fp}")
             break
         if was_sent(key_id, ttl_hours=18) or was_sent(key_fp, ttl_hours=18):
