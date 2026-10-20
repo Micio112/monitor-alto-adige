@@ -495,7 +495,7 @@
           <li data-i18n="cpr_step7"></li>
         </ul>
         <div class="cpr-controls">
-          <button type="button" class="cpr-start" id="cpr-start" data-i18n="cpr_start">Avvia ritmo</button>
+          <button type="button" class="cpr-start" id="cpr-start" data-i18n="cpr_start">Start</button>
           <button type="button" class="cpr-stop" id="cpr-stop" data-i18n="cpr_stop">Stop</button>
         </div>
         <div class="cpr-display" aria-live="polite">
@@ -621,7 +621,7 @@
         btn_cpr: "CPR<br>INSTRUCTIONS",
         h_cpr: "🫀 Istruzioni RCP / CPR",
         cpr_disclaimer: "Solo guida di supporto. In emergenza chiama subito il 112. Non sostituisce la formazione ufficiale.",
-        cpr_start: "Avvia ritmo compressioni",
+        cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "COMPRESSIONE",
         cpr_vent: "2 ventilazioni",
@@ -699,7 +699,7 @@
         btn_cpr: "CPR<br>ANLEITUNG",
         h_cpr: "🫀 CPR / Reanimation – Kurzanleitung",
         cpr_disclaimer: "Nur Unterstützung. Im Notfall sofort 112 rufen. Ersetzt keine offizielle Ausbildung.",
-        cpr_start: "Kompressionsrhythmus starten",
+        cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "KOMPRESSION",
         cpr_vent: "2 Beatmungen",
@@ -971,6 +971,11 @@
 
     function coloreLivello(c) {
       return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
+    }
+    function capitalizza(s) {
+      s = String(s || "").trim();
+      if (!s) return s;
+      return s.charAt(0).toUpperCase() + s.slice(1);
     }
     function formatDataGGMMYYYY(val) {
       if (val == null || val === "") return "—";
@@ -1340,7 +1345,12 @@
         let html = "";
         nomi.forEach(mun => {
           html += `<div class="park-comune"><h3>${mun}</h3>`;
-          by[mun].sort((a, b) => (a.name || "").localeCompare(b.name || "", loc())).forEach(p => {
+          by[mun].sort((a, b) => {
+            const aFull = (a.free != null && a.free <= 0) ? 1 : 0;
+            const bFull = (b.free != null && b.free <= 0) ? 1 : 0;
+            if (aFull !== bFull) return aFull - bFull; // pieni in fondo
+            return (a.name || "").localeCompare(b.name || "", loc());
+          }).forEach(p => {
             let posti = "";
             if (p.free != null && p.cap != null) {
               const pieno = p.free <= 0;
@@ -1560,7 +1570,7 @@
               <span class="badge" style="background:${coloreLivello(colKey)}">${labelCol}</span>
               <strong>${titolo}</strong>
             </div>
-            <div class="allerta-dettaglio">${sottotit || "—"}</div>
+            <div class="allerta-dettaglio">${capitalizza(sottotit) || "—"}</div>
           </div>`;
         });
         if (!html) throw new Error("nessun fenomeno");
@@ -1598,7 +1608,7 @@
             html += `<div class="riga-allerta"><div class="allerta-header">
               <span class="badge" style="background:${coloreLivello(colore)}">${coloreAllertaLabel(colore)}</span>
               <strong>${nomeShow}</strong></div>
-              <div class="allerta-dettaglio">${traduciAllertaTesto(oggi.descrizione || "—")}</div></div>`;
+              <div class="allerta-dettaglio">${capitalizza(traduciAllertaTesto(oggi.descrizione || "—"))}</div></div>`;
           }
           cont.innerHTML = html || `<div class="nessuna-allerta">${t("no_allerta")}</div>`;
           if (agg) agg.textContent = t("updated") + ": " + formatDataGGMMYYYY(new Date().toISOString());
@@ -1736,20 +1746,21 @@
     let cprMode = "compress"; // compress | vent1 | vent2
     let cprAudioCtx = null;
     function cprBeep(kind) {
-      // kind: "compress" | "vent"
+      // kind: "compress" | "vent" — volume alto (Web Audio non può alzare il volume di sistema)
       try {
         if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const ctx = cprAudioCtx;
         if (ctx.state === "suspended") ctx.resume();
         const o = ctx.createOscillator();
         const g = ctx.createGain();
-        o.type = kind === "vent" ? "triangle" : "sine";
+        o.type = kind === "vent" ? "square" : "square";
         o.connect(g); g.connect(ctx.destination);
-        o.frequency.value = kind === "vent" ? 520 : 920;
+        o.frequency.value = kind === "vent" ? 480 : 980;
         const now = ctx.currentTime;
-        const dur = kind === "vent" ? 0.35 : 0.07;
+        const dur = kind === "vent" ? 0.4 : 0.09;
+        const peak = kind === "vent" ? 0.85 : 0.9;
         g.gain.setValueAtTime(0.0001, now);
-        g.gain.exponentialRampToValueAtTime(kind === "vent" ? 0.28 : 0.22, now + 0.02);
+        g.gain.exponentialRampToValueAtTime(peak, now + 0.01);
         g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
         o.start(now); o.stop(now + dur + 0.02);
       } catch (e) {}
@@ -1777,7 +1788,7 @@
         cprUpdateUI(t("cpr_compress"), cprCount + " / 30", (30 - cprCount) + " → " + t("cpr_vent"));
         if (cprCount >= 30) {
           cprMode = "vent1";
-          cprScheduleNext(200); // breve pausa prima delle ventilazioni
+          cprScheduleNext(1000); // 1 secondo tra compressioni e ventilazioni
         } else {
           cprScheduleNext(545); // ~110/min
         }
@@ -1798,6 +1809,13 @@
       cprStop();
       cprCount = 0;
       cprMode = "compress";
+      // Sblocca audio (i browser bloccano il suono fino a un tap utente).
+      // Non è possibile impostare il volume di sistema del telefono da una pagina web.
+      try {
+        if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (cprAudioCtx.state === "suspended") cprAudioCtx.resume();
+        cprBeep("compress");
+      } catch (e) {}
       cprTick();
     }
     function cprStop() {
