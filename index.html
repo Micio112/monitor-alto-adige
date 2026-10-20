@@ -972,10 +972,22 @@
     function coloreLivello(c) {
       return { verde: "#38a169", gialla: "#d69e2e", arancione: "#dd6b20", rossa: "#e53e3e" }[c] || "#718096";
     }
+    function stripHtml(s) {
+      return String(s || "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
     function capitalizza(s) {
-      s = String(s || "").trim();
-      if (!s) return s;
-      return s.charAt(0).toUpperCase() + s.slice(1);
+      s = stripHtml(s);
+      if (!s) return "";
+      const m = s.match(/^([^A-Za-zÀ-ÖØ-öø-ÿ]*)([A-Za-zÀ-ÖØ-öø-ÿ])([\s\S]*)$/);
+      if (!m) return s.charAt(0).toUpperCase() + s.slice(1);
+      return m[1] + m[2].toUpperCase() + m[3];
     }
     function formatDataGGMMYYYY(val) {
       if (val == null || val === "") return "—";
@@ -1556,21 +1568,27 @@
           const id = String(active.identifier || "VERDE").toUpperCase();
           const colKey = livelloCss[id] || "verde";
           const labelCol = livelloNome[id] || id;
-          const titolo = (ph.title && (ph.title[L] || ph.title.it || ph.title.de)) || ph.identifier || "";
-          const sottotit = (active.title && (active.title[L] || active.title.it || active.title.de)) || "";
+          const titolo = capitalizza((ph.title && (ph.title[L] || ph.title.it || ph.title.de)) || ph.identifier || "");
+          let sottotit = (active.title && (active.title[L] || active.title.it || active.title.de)) || "";
+          // descrizione completa del livello (spesso più utile del solo titolo)
+          let desc = (active.description && (active.description[L] || active.description.it || active.description.de)) || "";
+          desc = stripHtml(desc);
+          // togli prefissi tipo "Scenario di evento -"
+          desc = desc.replace(/^(Scenario di evento|Scenari di evento|Ereignisszenarien|Event scenarios)\s*[-–—:]?\s*/i, "");
+          sottotit = capitalizza(sottotit);
+          desc = capitalizza(desc);
+          const dettaglio = desc || sottotit || "—";
           const liv = active.level || 0;
           if (liv > 0) {
             maxLevel = Math.max(maxLevel, liv);
             criticita.push(titolo);
           }
-          // Mostra solo fenomeni con allerta attiva (giallo+) oppure tutti se tutto verde (riepilogo)
-          // Regola: elenca sempre i fenomeni di OGGI con il livello reale
           html += `<div class="riga-allerta">
             <div class="allerta-header">
               <span class="badge" style="background:${coloreLivello(colKey)}">${labelCol}</span>
               <strong>${titolo}</strong>
             </div>
-            <div class="allerta-dettaglio">${capitalizza(sottotit) || "—"}</div>
+            <div class="allerta-dettaglio">${dettaglio}</div>
           </div>`;
         });
         if (!html) throw new Error("nessun fenomeno");
