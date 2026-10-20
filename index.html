@@ -411,7 +411,7 @@
     </div>
     <div class="header-top">
       <div class="header-emerg">
-        <a class="btn-aed" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener">
+        <a class="btn-aed" id="btn-aed-need" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener" role="button">
           <span class="heart">♥</span><span data-i18n="btn_aed">I NEED<br>AN AED</span>
         </a>
         <a class="btn-cpr" href="#cpr">
@@ -1291,7 +1291,7 @@
       const cont = document.querySelector(".lista-parcheggi");
       const agg = document.querySelector("#parcheggi .aggiornamento");
       try {
-        const res = await fetch("https://mobility.api.opendatahub.com/v2/flat,node/ParkingStation/*/latest?limit=2000");
+        const res = await fetch("https://mobility.api.opendatahub.com/v2/flat,node/ParkingStation/*/latest?limit=3000");
         const dati = await res.json();
         const stations = {};
         let ultimoTs = null;
@@ -1299,6 +1299,7 @@
           const code = x.scode;
           if (!stations[code]) {
             stations[code] = {
+              code,
               name: x.sname,
               meta: x.smetadata || {},
               vals: {},
@@ -1309,43 +1310,68 @@
           stations[code].vals[x.tname] = x.mvalue;
           const ts = x.mtransactiontime || x._timestamp;
           if (ts) {
-            const t = new Date(ts).getTime();
-            if (!stations[code].ts || t > stations[code].ts) stations[code].ts = t;
-            if (!ultimoTs || t > ultimoTs) ultimoTs = t;
+            const tms = new Date(ts).getTime();
+            if (!stations[code].ts || tms > stations[code].ts) stations[code].ts = tms;
+            if (!ultimoTs || tms > ultimoTs) ultimoTs = tms;
           }
         });
-        const by = {};
+        // Comuni Alto Adige (ampio) – solo stazioni con free E capacity validi
+        const munOk = (mun) => {
+          if (!mun) return false;
+          return /(bolzano|bozen|merano|meran|brunico|bruneck|bressanone|brixen|vipiteno|sterzing|silandro|schlanders|laives|leifers|appiano|eppan|lana|terlano|terlan|caldaro|kaltern|egna|neumarkt|ora|auer|renon|ritten|sarentino|sarntal|ortisei|st\.?\s*ulrich|selva|wolkenstein|castelrotto|kastelruth|dobbiaco|toblach|san\s*candido|innichen|sesto|sexten|campo\s*tures|sand\s*in\s*taufers|chiusa|klausen|naturno|naturns|laces|latsch|malles|mals|curon|graun|prato|prad|scena|schenna|tirolo|tirol|parcines|partschins|lagundo|algund|marlengo|marling|cermes|tscherms|postal|gargazon|nalles|nals|andriano|andrian|tesimo|tisens|meltina|mölten|verano|vöran|fiè|völs|nova\s*levante|welschnofen|nova\s*ponente|deutschnofen|aldino|aldein|trodena|truden|bronzolo|branzoll|vadena|pfatten|cortaccia|kurtatsch|termno|tramin|magrè|margreid|cortina|kurtinig|salorno|salurn|proves|proveis|senale|unsere\s*liebe|ulten|ultimo|st\.?\s*pankraz|castelbello|kastelbell|martello|martell|lasa|laas|stelvio|stilfs|tubre|taufers|racines|ratschings|val\s*di\s*vizze|pfitsch|brennero|brenner|forteza|franzensfeste|rio\s*di\s*pusteria|mühlbach|vandoies|vintl|terento|terenten|falzes|pfalzen|chienes|kiens|san\s*lorenzo|st\.?\s*lorenzen|marebbe|enneberg|badia|abtei|corvara|la\s*valle|wengen|san\s*martino|st\.?\s*martin|funes|villnöss|luson|lüsen|rodengo|rodeneck|varna|vahrn|naz|natz|sciaves|schabs)/i.test(mun);
+        };
+        const list = [];
         Object.values(stations).forEach(s => {
           const mun = s.meta.municipality || "";
-          if (!/(bolzano|bozen|merano|meran|brunico|bruneck|bressanone|brixen|vipiteno|sterzing)/i.test(mun)) return;
+          if (!munOk(mun)) return;
           let free = s.vals.free, occ = s.vals.occupied, cap = s.meta.capacity;
-          if (cap != null) {
-            const n = Number(cap);
-            if (!(n > 0) || n > 5000) cap = null;
-            else cap = n;
-          } else cap = null;
-          if (free != null) {
-            const n = Number(free);
-            if (!Number.isFinite(n) || n < 0 || n > 5000) free = null;
-            else free = n;
-          }
-          if (occ != null) {
-            const n = Number(occ);
-            if (!Number.isFinite(n) || n < 0 || n > 5000) occ = null;
-            else occ = n;
-          }
+          const num = (v, max = 5000) => {
+            if (v == null || v === "") return null;
+            const n = Number(v);
+            return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
+          };
+          free = num(free); occ = num(occ); cap = num(cap);
           if (free == null && cap != null && occ != null) free = Math.max(0, cap - occ);
-          // salta se non c'è nulla di utile da mostrare
+          // SOLO con disponibili + totale
+          if (free == null || cap == null || cap <= 0) return;
+          if (free > cap) free = cap;
+          const nome = (s.meta.standard_name || s.meta.name_it || s.meta.name_de || s.name || "").trim();
+          if (!nome) return;
           const addr = s.meta.mainaddress || s.meta.address || null;
           const phone = s.meta.phonenumber || s.meta.phone || null;
           const netex = s.meta.netex_parking || {};
-          const layout = netex.layout || null;
-          const charging = netex.charging === true;
-          const surveillance = netex.surveillance === true;
-          const nome = s.meta.standard_name || s.meta.name_it || s.name;
-          if (free == null && cap == null && !addr && !phone) return;
-          if (!by[mun]) by[mun] = [];
-          by[mun].push({ name: nome, free, cap, occ, addr, phone, layout, charging, surveillance, coord: s.coord });
+          list.push({
+            code: s.code,
+            name: nome,
+            mun,
+            free,
+            cap,
+            occ,
+            addr,
+            phone,
+            layout: netex.layout || null,
+            charging: netex.charging === true,
+            surveillance: netex.surveillance === true,
+            coord: s.coord,
+            ts: s.ts || 0
+          });
+        });
+        // Deduplica: stesso nome + comune → tieni il dato più recente / con più posti
+        const dedup = new Map();
+        list.forEach(p => {
+          const key = (p.name.toLowerCase().replace(/\s+/g, " ") + "|" + p.mun.toLowerCase());
+          const prev = dedup.get(key);
+          if (!prev) { dedup.set(key, p); return; }
+          // preferisci aggiornamento più recente, poi capacità maggiore
+          if ((p.ts || 0) > (prev.ts || 0) || ((p.ts || 0) === (prev.ts || 0) && p.cap > prev.cap)) {
+            dedup.set(key, p);
+          }
+        });
+        const unique = [...dedup.values()];
+        const by = {};
+        unique.forEach(p => {
+          if (!by[p.mun]) by[p.mun] = [];
+          by[p.mun].push(p);
         });
         const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, loc()));
         if (!nomi.length) {
@@ -1358,20 +1384,13 @@
         nomi.forEach(mun => {
           html += `<div class="park-comune"><h3>${mun}</h3>`;
           by[mun].sort((a, b) => {
-            const aFull = (a.free != null && a.free <= 0) ? 1 : 0;
-            const bFull = (b.free != null && b.free <= 0) ? 1 : 0;
-            if (aFull !== bFull) return aFull - bFull; // pieni in fondo
+            const aFull = a.free <= 0 ? 1 : 0;
+            const bFull = b.free <= 0 ? 1 : 0;
+            if (aFull !== bFull) return aFull - bFull;
             return (a.name || "").localeCompare(b.name || "", loc());
           }).forEach(p => {
-            let posti = "";
-            if (p.free != null && p.cap != null) {
-              const pieno = p.free <= 0;
-              posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
-            } else if (p.free != null) {
-              posti = `<span class="park-free">${p.free} ${t("park_free")}</span>`;
-            } else if (p.cap != null) {
-              posti = `<span class="park-free">${p.cap} ${t("park_posti")}</span>`;
-            }
+            const pieno = p.free <= 0;
+            const posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
             let meta = [];
             if (p.addr) meta.push("📍 " + p.addr);
             if (p.phone) meta.push("☎ " + p.phone);
@@ -1385,20 +1404,21 @@
               maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">${t("park_map")}</a>`;
             }
             html += `<div class="park-item">
-              <div class="park-item-top"><span class="park-nome">${p.name || t("park_name")}${maps}</span>${posti}</div>
+              <div class="park-item-top"><span class="park-nome">${p.name}${maps}</span>${posti}</div>
               ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
-              ${tags.length ? `<div class="park-tags">${tags.map(t => `<span class="park-tag">${t}</span>`).join("")}</div>` : ""}
+              ${tags.length ? `<div class="park-tags">${tags.map(tg => `<span class="park-tag">${tg}</span>`).join("")}</div>` : ""}
             </div>`;
           });
           html += `</div>`;
         });
+
         cont.innerHTML = html;
         agg.textContent = ultimoTs
-          ? "Ultimo aggiornamento dati: " + new Date(ultimoTs).toLocaleString("it-IT")
-          : "Aggiornato: " + new Date().toLocaleString("it-IT");
+          ? t("updated") + ": " + new Date(ultimoTs).toLocaleString(loc())
+          : t("updated") + ": " + new Date().toLocaleString(loc());
       } catch (e) {
-        cont.innerHTML = "<p style='padding:12px'>Errore parcheggi.</p>";
-        agg.textContent = "Errore di caricamento";
+        cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
+        agg.textContent = "Errore";
       }
     }
 
@@ -1848,6 +1868,50 @@
       if (hint) hint.textContent = "";
     }
 
+
+    function aedMapUrl() {
+      return lang === "de"
+        ? "https://openaedmap.org/de/#map=10/46.5/11.35"
+        : "https://openaedmap.org/it/#map=10/46.5/11.35";
+    }
+    function openAedApp(e) {
+      // Prova app Mapa AED se installata; altrimenti mappa OpenAEDMap
+      if (e) e.preventDefault();
+      const map = aedMapUrl();
+      const ua = navigator.userAgent || "";
+      const isAndroid = /Android/i.test(ua);
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      let triedApp = false;
+      const goMap = () => { window.location.href = map; };
+      if (isAndroid) {
+        triedApp = true;
+        // Intent: apre l'app se installata, altrimenti browser_fallback_url
+        const intent =
+          "intent://open#Intent;package=pl.enteam.aed_map;scheme=https;" +
+          "S.browser_fallback_url=" + encodeURIComponent(map) + ";end";
+        window.location.href = intent;
+      } else if (isIOS) {
+        triedApp = true;
+        // Tentativo deep link; se l'app non risponde → mappa
+        const start = Date.now();
+        window.location.href = "mapa-aed://";
+        setTimeout(() => {
+          if (document.visibilityState === "visible" && Date.now() - start < 2500) {
+            goMap();
+          }
+        }, 1400);
+      } else {
+        goMap();
+      }
+      // Android: se Intent non gestito, dopo un po' mappa
+      if (isAndroid) {
+        setTimeout(() => {
+          if (document.visibilityState === "visible") goMap();
+        }, 1600);
+      }
+      return false;
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
@@ -1856,6 +1920,8 @@
       const cprT = document.getElementById("cpr-stop");
       if (cprS) cprS.addEventListener("click", cprStart);
       if (cprT) cprT.addEventListener("click", cprStop);
+      const aedBtn = document.getElementById("btn-aed-need");
+      if (aedBtn) aedBtn.addEventListener("click", openAedApp);
       applyLang();
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
       caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
