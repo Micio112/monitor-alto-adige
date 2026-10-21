@@ -79,6 +79,16 @@
     .cpr-panel {
       background: #fff5f5; border: 2px solid #fc8181; border-radius: 12px; padding: 14px;
     }
+    .ps-disclaimer {
+      margin-top: 14px;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      line-height: 1.4;
+      color: #4a5568;
+      background: #f7fafc;
+      border-left: 3px solid #2b6cb0;
+      border-radius: 0 8px 8px 0;
+    }
     .cpr-panel .cpr-disclaimer {
       font-size: 0.82rem; color: #9b2c2c; font-weight: 600; margin-bottom: 10px;
     }
@@ -474,6 +484,7 @@
       <h2 data-i18n="h_ps">🏥 Pronto Soccorso</h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-ospedali"><p>Attendere…</p></div>
+      <p class="ps-disclaimer" data-i18n="ps_disclaimer">Per urgenze minori e il servizio di «Guardia Medica» è possibile rivolgersi alla Casa di comunità del proprio comune.</p>
     </section>
     <section class="card" id="aed">
       <h2 data-i18n="h_aed">❤️ Defibrillatori pubblici (AED)</h2>
@@ -621,6 +632,7 @@
         btn_cpr: "CPR<br>INSTRUCTIONS",
         h_cpr: "🫀 Istruzioni RCP / CPR",
         cpr_disclaimer: "Solo guida di supporto. In emergenza chiama subito il 112. Non sostituisce la formazione ufficiale.",
+        ps_disclaimer: "Per urgenze minori e il servizio di «Guardia Medica» è possibile rivolgersi alla Casa di comunità del proprio comune.",
         cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "COMPRESSIONE",
@@ -699,6 +711,7 @@
         btn_cpr: "CPR<br>ANLEITUNG",
         h_cpr: "🫀 CPR / Reanimation – Kurzanleitung",
         cpr_disclaimer: "Nur Unterstützung. Im Notfall sofort 112 rufen. Ersetzt keine offizielle Ausbildung.",
+        ps_disclaimer: "Bei kleineren Notfällen und für den Bereitschaftsarzt («Guardia Medica») können Sie sich an das Haus der Gemeinschaft Ihrer Gemeinde wenden.",
         cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "KOMPRESSION",
@@ -1875,40 +1888,57 @@
         : "https://openaedmap.org/it/#map=10/46.5/11.35";
     }
     function openAedApp(e) {
-      // Prova app Mapa AED se installata; altrimenti mappa OpenAEDMap
+      // Android: Intent verso Mapa AED (pl.enteam.aed_map)
+      // iOS: nessun URL scheme pubblico documentato dall'app (Flutter, aedmapa.pl).
+      //       Si prova App Store (itms-apps → "Apri" se installata) e scheme comuni;
+      //       fallback: mappa OpenAEDMap (dati OSM Alto Adige).
       if (e) e.preventDefault();
       const map = aedMapUrl();
+      const storeIOS = "itms-apps://apps.apple.com/app/id1638495701";
+      const storeHttps = "https://apps.apple.com/it/app/id1638495701";
       const ua = navigator.userAgent || "";
       const isAndroid = /Android/i.test(ua);
       const isIOS = /iPhone|iPad|iPod/i.test(ua);
-      let triedApp = false;
       const goMap = () => { window.location.href = map; };
+      const stillHere = (t0, ms) =>
+        document.visibilityState === "visible" && (Date.now() - t0) < ms;
+
       if (isAndroid) {
-        triedApp = true;
-        // Intent: apre l'app se installata, altrimenti browser_fallback_url
         const intent =
           "intent://open#Intent;package=pl.enteam.aed_map;scheme=https;" +
           "S.browser_fallback_url=" + encodeURIComponent(map) + ";end";
         window.location.href = intent;
-      } else if (isIOS) {
-        triedApp = true;
-        // Tentativo deep link; se l'app non risponde → mappa
-        const start = Date.now();
-        window.location.href = "mapa-aed://";
-        setTimeout(() => {
-          if (document.visibilityState === "visible" && Date.now() - start < 2500) {
-            goMap();
+        setTimeout(() => { if (document.visibilityState === "visible") goMap(); }, 1600);
+        return false;
+      }
+      if (isIOS) {
+        const t0 = Date.now();
+        // 1) scheme ipotetici (se in futuro l'app li registra)
+        const schemes = ["aedmapa://", "aed_map://", "mapa-aed://"];
+        let i = 0;
+        const tryNext = () => {
+          if (i < schemes.length && stillHere(t0, 900)) {
+            const s = schemes[i++];
+            const ifr = document.createElement("iframe");
+            ifr.style.display = "none";
+            ifr.src = s;
+            document.body.appendChild(ifr);
+            setTimeout(() => { try { document.body.removeChild(ifr); } catch (_) {} tryNext(); }, 280);
+            return;
           }
-        }, 1400);
-      } else {
-        goMap();
+          // 2) App Store nativo (se app installata mostra "Apri")
+          if (stillHere(t0, 2000)) {
+            window.location.href = storeIOS;
+            setTimeout(() => {
+              // 3) se ancora qui → mappa locale (emergenza Alto Adige)
+              if (document.visibilityState === "visible") goMap();
+            }, 1600);
+          }
+        };
+        tryNext();
+        return false;
       }
-      // Android: se Intent non gestito, dopo un po' mappa
-      if (isAndroid) {
-        setTimeout(() => {
-          if (document.visibilityState === "visible") goMap();
-        }, 1600);
-      }
+      goMap();
       return false;
     }
 
