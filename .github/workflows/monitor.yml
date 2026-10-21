@@ -81,6 +81,7 @@ jobs:
           SUBS_URL: ${{ secrets.SUBS_URL }}
           SUBS_KEY: ${{ secrets.SUBS_KEY }}
           SITE_URL: ${{ secrets.SITE_URL }}
+          GH_EVENT: ${{ github.event_name }}
         run: python notifica.py ${{ steps.mode.outputs.modo }}
 
       - name: Save state
