@@ -38,6 +38,7 @@ SOGLIA_GIALLI = 15
 SOGLIA_VERDI = 30
 
 STAZIONI_NOMI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Silandro", "Dobbiaco"]
+STAZIONI_NOMI_DE = ["Bozen", "Meran", "Brixen", "Bruneck", "Schlanders", "Toblach"]
 GIORNI = {0: "Lunedì", 1: "Martedì", 2: "Mercoledì", 3: "Giovedì", 4: "Venerdì", 5: "Sabato", 6: "Domenica"}
 CERCHI = {"1": "🔴", "2": "🟠", "3": "🟡", "4": "🟢", "5": "🔵"}
 
@@ -766,7 +767,6 @@ def controlla_temporali():
     return messaggi
 
 
-# ========== METEO ==========
 # ========== METEO ==========
 def formatta_stazioni(station_data, lang="it"):
     if not station_data:
@@ -1550,11 +1550,12 @@ def report_farmacie(quando="sera"):
         visti = set()
         unici = []
         for f in farm:
-            key = (
-                (f.get("PHAR_ID") or f.get("PHAR_DESC_I") or "").strip().lower(),
-                (f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip(),
-                (f.get("GEME_DESC_I") or "").strip().lower(),
-            )
+            pid = f.get("PHAR_ID")
+            pname = f.get("PHAR_DESC_I") or f.get("PHAR_DESC_D") or ""
+            id_key = str(pid if pid is not None else pname).strip().lower()
+            orario_key = str(f.get("TURN_TIMETABLE") or f.get("PHAR_TIMETABLE") or "").strip()
+            geme_key = str(f.get("GEME_DESC_I") or "").strip().lower()
+            key = (id_key, orario_key, geme_key)
             if key in visti:
                 continue
             visti.add(key)
