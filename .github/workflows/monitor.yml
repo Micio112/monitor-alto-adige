@@ -40,14 +40,15 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Action aggiornate a runtime Node.js 24 (niente più warning deprecation Node 20)
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
       - name: Restore state
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .state
           key: monitor-state-${{ github.run_id }}
@@ -86,7 +87,7 @@ jobs:
 
       - name: Save state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: .state
           key: monitor-state-${{ github.run_id }}
