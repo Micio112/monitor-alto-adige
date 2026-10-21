@@ -537,7 +537,7 @@ def _active_warning_level(levels):
 def prendi_allerte_nazionali():
     """Bollettino ufficiale allerte.provincia.bz.it – solo OGGI, solo livelli > verde."""
     try:
-        oggi = date.today().isoformat()
+        oggi = ora_roma().date().isoformat()
         url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
         url_de = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=de"
         dati = requests.get(url, timeout=20).json()
@@ -630,7 +630,7 @@ def controlla_temporali():
     """Temporali: prima CFP ufficiale (RISK_TEMPORALE), poi fallback allertameteo."""
     messaggi = []
     try:
-        oggi = date.today().isoformat()
+        oggi = ora_roma().date().isoformat()
         url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
         dati = requests.get(url, timeout=15).json()
         for ph in dati.get("phenomena") or []:
@@ -682,7 +682,7 @@ def controlla_temporali():
             if colore not in LIVELLI_ALLERTA and "forti" not in testo_l and "intense" not in testo_l:
                 continue
             comune = info.get("comune", nome)
-            key = f"temporale-{comune}-{colore}-{date.today()}"
+            key = f"temporale-{comune}-{colore}-{ora_roma().date().isoformat()}"
             if already_sent(key, ttl_hours=12):
                 continue
             desc = allerta.get("descrizione") or dettagli.get("temporali") or ""
@@ -815,12 +815,45 @@ def _bollettino_meteo_lang(dati, quando, lang="it"):
     return testo
 
 
+def _meteo_bollettino_aggiornato(dati, quando="mattina"):
+    """True se il bollettino SIAG è del giorno corrente (Roma) e ha contenuti utili.
+
+    La provincia pubblica di solito il bollettino del giorno al mattino (campo date + hour).
+    Non inviamo se il file è ancora quello di ieri o senza testo meteo.
+    """
+    if not isinstance(dati, dict):
+        return False
+    oggi_roma = ora_roma().date().isoformat()
+    # data del bollettino (es. "2026-10-21T00:00:00" o "2026-10-21")
+    bdate = str(dati.get("date") or "")
+    if len(bdate) >= 10:
+        bday = bdate[:10]
+    else:
+        bday = ""
+    if bday and bday != oggi_roma:
+        print(f"Meteo: bollettino data {bday} ≠ oggi Roma {oggi_roma} – non ancora aggiornato")
+        return False
+    if quando in ("sera", "domani", "evening"):
+        parte = dati.get("tomorrow") or {}
+    else:
+        parte = dati.get("today") or {}
+    # serve almeno titolo o testo condizioni
+    if not (parte.get("weather") or parte.get("title") or parte.get("conditions")):
+        print("Meteo: sezione oggi/domani senza contenuti – attendo aggiornamento")
+        return False
+    # hour es. "11:00" indica pubblicazione; se manca ma c'è testo ok
+    print(f"Meteo: bollettino OK data={bday or oggi_roma} hour={dati.get('hour')} id={dati.get('id')}")
+    return True
+
+
 def prendi_bollettino_meteo(quando="mattina"):
-    """Restituisce dict {it, de} oppure None."""
+    """Restituisce dict {it, de} oppure None se non ancora aggiornato / errore."""
     try:
         dati_it = requests.get(
             "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it", timeout=15
         ).json()
+        if not _meteo_bollettino_aggiornato(dati_it, quando):
+            return None
         try:
             dati_de = requests.get(
                 "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=de", timeout=15
@@ -1692,19 +1725,20 @@ def controlla_emergenze():
         else:
             print("Report viabilità già inviato oggi")
 
-    # Meteo MATTINA 7:00–10:00 → solo oggi + prognosi
-    if 7 <= h < 10:
+    # Meteo MATTINA 7:00–13:00 → solo dopo che SIAG ha pubblicato il bollettino di OGGI
+    # (finestra larga: il bollettino esce spesso tra le 8 e le 11)
+    if 7 <= h < 13:
         if not has_daily_flag("meteo_mattina"):
-            print("Invio meteo mattina (oggi + prognosi)...")
+            print("Tentativo meteo mattina (oggi + prognosi)...")
             bol = prendi_bollettino_meteo("mattina")
             if bol:
                 if invia_messaggio(bol):
                     set_daily_flag("meteo_mattina")
                     print("Meteo mattina OK")
                 else:
-                    print("Meteo mattina FALLITO – ritento")
+                    print("Meteo mattina FALLITO – ritento al prossimo run")
             else:
-                print("Meteo mattina: bollettino non disponibile")
+                print("Meteo mattina: bollettino non ancora aggiornato – ritento")
 
     # Report serali (meteo domani + farmacie notte) – stessa logica del modo "sera"
     invia_report_serali()
