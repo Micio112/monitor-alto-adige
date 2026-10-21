@@ -6,7 +6,6 @@ on:
     - cron: '*/30 * * * *'
 
     # Report mattina (backup)
-    # UTC → Roma CEST (+2) / CET (+1)
     - cron: '0 5 * * *'
     - cron: '30 5 * * *'
     - cron: '0 6 * * *'
@@ -14,17 +13,14 @@ on:
     - cron: '0 9 * * *'
 
     # SERA dedicata: meteo di domani + farmacie di notte
-    # (modo=sera → invia entrambi anche se il job */30 è in ritardo)
-    # 16:00 UTC ≈ 18:00 Roma CEST | 17:00 CET
-    # 17:00 UTC ≈ 19:00 Roma CEST | 18:00 CET
-    # 18:00 UTC ≈ 20:00 Roma CEST | 19:00 CET
-    # 19:00 UTC ≈ 21:00 Roma CEST | 20:00 CET
-    # 20:00 UTC ≈ 22:00 Roma CEST | 21:00 CET
+    # CEST (+2): 15–21 UTC ≈ 17–23 Roma | CET (+1): 16–21 UTC ≈ 17–22 Roma
+    - cron: '0 15 * * *'
     - cron: '0 16 * * *'
     - cron: '0 17 * * *'
     - cron: '0 18 * * *'
     - cron: '0 19 * * *'
     - cron: '0 20 * * *'
+    - cron: '0 21 * * *'
 
     # Farmacie weekend mattina (turno diurno) – 6:30 UTC ≈ 8:30 CEST
     - cron: '30 6 * * 0,6'
@@ -40,13 +36,15 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      # Action aggiornate a runtime Node.js 24 (niente più warning deprecation Node 20)
       - uses: actions/checkout@v5
 
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
+      # GitHub cache: la chiave esatta è IMMUTABILE una volta creata.
+      # Quindi salviamo sempre con run_id (chiave nuova) e ripristiniamo
+      # l'ultimo stato con restore-keys sul prefisso.
       - name: Restore state
         uses: actions/cache@v5
         with:
@@ -64,10 +62,10 @@ jobs:
           SCHEDULE="${{ github.event.schedule }}"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "modo=${{ github.event.inputs.modo || 'check' }}" >> "$GITHUB_OUTPUT"
-          elif [ "$SCHEDULE" = "0 16 * * *" ] || [ "$SCHEDULE" = "0 17 * * *" ] || \
-               [ "$SCHEDULE" = "0 18 * * *" ] || [ "$SCHEDULE" = "0 19 * * *" ] || \
-               [ "$SCHEDULE" = "0 20 * * *" ]; then
-            # Slot sera: meteo domani + farmacie notte
+          elif [ "$SCHEDULE" = "0 15 * * *" ] || [ "$SCHEDULE" = "0 16 * * *" ] || \
+               [ "$SCHEDULE" = "0 17 * * *" ] || [ "$SCHEDULE" = "0 18 * * *" ] || \
+               [ "$SCHEDULE" = "0 19 * * *" ] || [ "$SCHEDULE" = "0 20 * * *" ] || \
+               [ "$SCHEDULE" = "0 21 * * *" ]; then
             echo "modo=sera" >> "$GITHUB_OUTPUT"
           elif [ "$SCHEDULE" = "30 6 * * 0,6" ]; then
             echo "modo=farmacie" >> "$GITHUB_OUTPUT"
