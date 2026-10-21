@@ -1861,9 +1861,21 @@ if __name__ == "__main__":
                 print("Report viabilità inviato")
             else:
                 print("Invio report viabilità FALLITO")
-        elif modo in ("farmacie", "sera", "evening"):
-            # Slot dedicato sera: SEMPRE meteo domani + farmacie (non solo farmacie)
-            print(f"Modalità sera/farmacie · TOKEN={bool(TOKEN)} CHAT_ID={CHAT_ID!r} SUBS={bool(SUBS_URL)}")
+        elif modo in ("farmacie", "sera", "evening", "sera_force", "force_sera"):
+            # Slot dedicato / manuale: meteo domani + farmacie notte
+            print(f"Modalità sera · TOKEN={bool(TOKEN)} CHAT_ID={CHAT_ID!r} SUBS_URL={bool(SUBS_URL)}")
+            dest = prendi_destinatari()
+            print(f"Destinatari trovati: {len(dest)} → {[d.get('id') for d in dest[:5]]}")
+            # Solo run MANUALE (workflow_dispatch) o modo force: reset flag e reinvia
+            is_manual = os.environ.get("GH_EVENT", "") == "workflow_dispatch"
+            is_force = modo in ("sera_force", "force_sera")
+            if is_manual or is_force:
+                st = load_state("daily", {})
+                had = {k: st.get(k) for k in ("meteo_sera", "farm_sera") if k in st}
+                print(f"Run manuale/force: reset flag serali (erano: {had})")
+                st.pop("meteo_sera", None)
+                st.pop("farm_sera", None)
+                save_state("daily", st)
             invia_report_serali(force=True)
         else:
             controlla_emergenze()
