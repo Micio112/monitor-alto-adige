@@ -419,6 +419,11 @@ def invia_pacchetto(messaggi):
                     print("Eccezione invio", cid, e)
         if ok:
             ok_any = True
+    if ok_any:
+        for m in messaggi:
+            if isinstance(m, dict):
+                for k in m.get("_keys") or []:
+                    mark_sent(k)
     return ok_any
 
 
@@ -535,7 +540,13 @@ def _active_warning_level(levels):
 
 
 def prendi_allerte_nazionali():
-    """Bollettino ufficiale allerte.provincia.bz.it – solo OGGI, solo livelli > verde."""
+    """Solo fonte ufficiale Provincia (CFP risk_potential).
+
+    Regole:
+    - max 1 notifica / fenomeno / livello / 24h
+    - nuova allerta o salita di livello → notifica sempre (se non già inviata nelle 24h)
+    - ritorno a verde → avviso di normalizzazione (1 volta)
+    """
     try:
         oggi = ora_roma().date().isoformat()
         url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
@@ -546,173 +557,216 @@ def prendi_allerte_nazionali():
         except Exception:
             dati_de = dati
         ph_de = {p.get("identifier"): p for p in (dati_de.get("phenomena") or [])}
+
+        prev = load_state("cfp_levels", {})  # {identifier: int level}
+        current = {}
         out = []
         nl = chr(10)
+        link = "https://allerte.provincia.bz.it/it/reports/risk-potential/list"
+        link_de = "https://warnungen.provinz.bz.it/de/reports/risk-potential/list"
+        data_fmt = f"{oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}"
+
         for ph in dati.get("phenomena") or []:
-            active = _active_warning_level(ph.get("warningLevels") or [])
-            if not active:
+            ident_ph = ph.get("identifier") or ""
+            if not ident_ph or ident_ph == "RISK_TEMPORALE":
+                # i temporali hanno funzione dedicata
+                active = _active_warning_level(ph.get("warningLevels") or [])
+                liv = int(active.get("level") or 0) if active else 0
+                current[ident_ph] = liv
                 continue
-            liv = active.get("level") or 0
+
+            active = _active_warning_level(ph.get("warningLevels") or [])
+            liv = int(active.get("level") or 0) if active else 0
+            current[ident_ph] = liv
+            prev_liv = int(prev.get(ident_ph, 0) or 0)
+
+            titolo_it = (ph.get("title") or {}).get("it") or ident_ph
+            titolo_de = (ph_de.get(ident_ph, ph).get("title") or {}).get("de") or titolo_it
+
+            # --- Normalizzazione: era >0 e ora 0 ---
+            if liv <= 0 and prev_liv > 0:
+                key = f"cfp-norm-{ident_ph}-{oggi}"
+                if not was_sent(key, ttl_hours=24):
+                    out.append({
+                        "it": (
+                            f"🟢 <b>Fine allerta</b>{nl}"
+                            f"<b>{titolo_it}</b>{nl}"
+                            f"Il livello è tornato a <b>verde</b>.{nl}"
+                            f"📅 {data_fmt}{nl}"
+                            f"🔗 {link}"
+                        ),
+                        "de": (
+                            f"🟢 <b>Entwarnung</b>{nl}"
+                            f"<b>{titolo_de}</b>{nl}"
+                            f"Die Stufe ist wieder <b>grün</b>.{nl}"
+                            f"📅 {data_fmt}{nl}"
+                            f"🔗 {link_de}"
+                        ),
+                        "_keys": [key],
+                    })
+                    print(f"Normalizzazione CFP: {ident_ph}")
+                continue
+
             if liv <= 0:
                 continue
-            ident = str(active.get("identifier") or "").upper()
+
+            ident_lv = str((active or {}).get("identifier") or "").upper()
             colore = {"GIALLO": "gialla", "GIALLA": "gialla", "ARANCIONE": "arancione",
-                      "ROSSO": "rossa", "ROSSA": "rossa"}.get(ident, ident.lower())
+                      "ROSSO": "rossa", "ROSSA": "rossa"}.get(ident_lv, "")
+            if colore not in LIVELLI_ALLERTA:
+                # mappa da livello numerico
+                colore = {1: "gialla", 2: "arancione", 3: "rossa"}.get(liv, "")
             if colore not in LIVELLI_ALLERTA:
                 continue
-            titolo_it = (ph.get("title") or {}).get("it") or ph.get("identifier") or ""
-            titolo_de = (ph_de.get(ph.get("identifier"), ph).get("title") or {}).get("de") or titolo_it
-            sott_it = (active.get("title") or {}).get("it") or ""
-            sott_de = (active.get("title") or {}).get("de") or sott_it
-            key = f"cfp-allerta-{ph.get('identifier')}-{ident}-{oggi}"
-            if already_sent(key, ttl_hours=20):
+
+            # Nuova o salita di livello: key include livello
+            key = f"cfp-allerta-{ident_ph}-L{liv}-{oggi}"
+            if was_sent(key, ttl_hours=24):
                 continue
+
+            sott_it = ((active or {}).get("title") or {}).get("it") or ""
+            sott_de = ((active or {}).get("title") or {}).get("de") or sott_it
             emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⚠️")
             col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
-            link = "https://allerte.provincia.bz.it/it/reports/risk-potential/list"
-            link_de = "https://warnungen.provinz.bz.it/de/reports/risk-potential/list"
-            it = (
-                f"{emoji} <b>Allerta {colore.capitalize()}</b>" + nl
-                + f"<b>{titolo_it}</b>" + nl
-                + (sott_it + nl if sott_it else "")
-                + f"📅 {oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}" + nl
-                + f"🔗 {link}"
-            )
-            de = (
-                f"{emoji} <b>Wetterwarnung {col_de}</b>" + nl
-                + f"<b>{titolo_de}</b>" + nl
-                + (sott_de + nl if sott_de else "")
-                + f"📅 {oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}" + nl
-                + f"🔗 {link_de}"
-            )
-            out.append({"it": it, "de": de})
-            print(f"Allerta CFP: {titolo_it} → {ident}")
+            extra = ""
+            if prev_liv > 0 and liv > prev_liv:
+                extra = f"{nl}⬆️ Livello aumentato (prima: {prev_liv})"
+                extra_de = f"{nl}⬆️ Stufe erhöht (vorher: {prev_liv})"
+            elif prev_liv == 0:
+                extra = f"{nl}🆕 Nuova allerta"
+                extra_de = f"{nl}🆕 Neue Warnung"
+            else:
+                extra = ""
+                extra_de = ""
+
+            out.append({
+                "it": (
+                    f"{emoji} <b>Allerta {colore.capitalize()}</b>{nl}"
+                    f"<b>{titolo_it}</b>{nl}"
+                    + (sott_it + nl if sott_it else "")
+                    + extra + (nl if extra else "")
+                    + f"📅 {data_fmt}{nl}"
+                    + f"🔗 {link}"
+                ),
+                "de": (
+                    f"{emoji} <b>Wetterwarnung {col_de}</b>{nl}"
+                    f"<b>{titolo_de}</b>{nl}"
+                    + (sott_de + nl if sott_de else "")
+                    + extra_de + (nl if extra_de else "")
+                    + f"📅 {data_fmt}{nl}"
+                    + f"🔗 {link_de}"
+                ),
+                "_keys": [key],
+            })
+            print(f"Allerta CFP: {titolo_it} → L{liv} {ident_lv}")
+
+        save_state("cfp_levels", current)
         return out
     except Exception as e:
         print("Errore allerte CFP:", e)
-        # fallback allertameteo
-        try:
-            url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
-            dati = requests.get(url, timeout=15).json()
-            if not dati.get("success"):
-                return []
-            data = dati.get("data", {})
-            if isinstance(data, dict) and "comune" in data:
-                data = {data["comune"]: data}
-            out = []
-            nl = chr(10)
-            for nome, info in data.items():
-                if not info:
-                    continue
-                oggi_a = info.get("oggi", {}).get("allerta", {})
-                colore = (oggi_a.get("colore") or "verde").lower()
-                if colore not in LIVELLI_ALLERTA:
-                    continue
-                key = f"allerta-{info.get('comune', nome)}-{colore}-{(oggi_a.get('descrizione') or '')[:40]}"
-                if already_sent(key, ttl_hours=20):
-                    continue
-                emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⚠️")
-                desc = oggi_a.get("descrizione", "") or ""
-                comune = info.get("comune", nome)
-                col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
-                out.append({
-                    "it": f"{emoji} <b>Allerta {colore.capitalize()}</b>{nl}Comune: {comune}{nl}{desc}",
-                    "de": f"{emoji} <b>Wetterwarnung {col_de}</b>{nl}Gemeinde: {comune}{nl}{desc}",
-                })
-            return out
-        except Exception as e2:
-            print("Errore allerte fallback:", e2)
-            return []
+        return []
 
 
-# ========== TEMPORALI (1 volta per comune/evento) ==========
+# ========== TEMPORALI (solo Provincia CFP, più accurato) ==========
 def controlla_temporali():
-    """Temporali: prima CFP ufficiale (RISK_TEMPORALE), poi fallback allertameteo."""
+    """Temporali solo da RISK_TEMPORALE ufficiale.
+
+    - livello > 0 con comuni → notifica
+    - max 1 / livello / 24h
+    - normalizzazione a verde se prima era attivo
+    """
     messaggi = []
     try:
         oggi = ora_roma().date().isoformat()
         url = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=it"
+        url_de = f"https://cms-lwz.afbs.it/fileadmin/export/risk_potential_{oggi}.json?language=de"
         dati = requests.get(url, timeout=15).json()
-        for ph in dati.get("phenomena") or []:
-            if ph.get("identifier") != "RISK_TEMPORALE":
+        try:
+            dati_de = requests.get(url_de, timeout=12).json()
+        except Exception:
+            dati_de = dati
+        ph_de_map = {p.get("identifier"): p for p in (dati_de.get("phenomena") or [])}
+        prev = load_state("cfp_temporale", {"level": 0})
+        prev_liv = int(prev.get("level") or 0)
+        liv = 0
+        active = None
+        ph = None
+        for p in dati.get("phenomena") or []:
+            if p.get("identifier") != "RISK_TEMPORALE":
                 continue
-            active = _active_warning_level(ph.get("warningLevels") or [])
-            if not active or (active.get("level") or 0) <= 0:
-                continue
-            ident = str(active.get("identifier") or "").upper()
-            colore = {"GIALLO": "gialla", "ARANCIONE": "arancione", "ROSSO": "rossa"}.get(ident, "gialla")
-            key = f"temporale-cfp-{ident}-{oggi}"
-            if already_sent(key, ttl_hours=12):
-                continue
-            titolo = (ph.get("title") or {}).get("it") or "Temporali forti"
-            titolo_de = (ph.get("title") or {}).get("de") or "Starke Gewitter"
-            sott = (active.get("title") or {}).get("it") or ""
-            sott_de = (active.get("title") or {}).get("de") or sott
-            nl = chr(10)
-            messaggi.append({
-                "it": f"⛈️ <b>Temporale / maltempo</b>{nl}{titolo}{nl}{sott}{nl}Livello: {colore}",
-                "de": f"⛈️ <b>Gewitter / Unwetter</b>{nl}{titolo_de}{nl}{sott_de}{nl}Stufe: {ident.title()}",
-            })
-            print(f"Temporale CFP: {ident}")
+            ph = p
+            active = _active_warning_level(p.get("warningLevels") or [])
+            liv = int(active.get("level") or 0) if active else 0
+            break
+
+        save_state("cfp_temporale", {"level": liv, "day": oggi})
+        nl = chr(10)
+        data_fmt = f"{oggi[8:10]}/{oggi[5:7]}/{oggi[:4]}"
+        link = "https://allerte.provincia.bz.it/it/reports/risk-potential/list"
+        link_de = "https://warnungen.provinz.bz.it/de/reports/risk-potential/list"
+
+        if liv <= 0:
+            if prev_liv > 0:
+                key = f"temporale-norm-{oggi}"
+                if not was_sent(key, ttl_hours=24):
+                    messaggi.append({
+                        "it": (
+                            f"🟢 <b>Fine allerta temporali</b>{nl}"
+                            f"Il rischio temporali è tornato a <b>verde</b>.{nl}"
+                            f"📅 {data_fmt}{nl}🔗 {link}"
+                        ),
+                        "de": (
+                            f"🟢 <b>Entwarnung Gewitter</b>{nl}"
+                            f"Die Gewitterwarnung ist wieder <b>grün</b>.{nl}"
+                            f"📅 {data_fmt}{nl}🔗 {link_de}"
+                        ),
+                        "_keys": [key],
+                    })
+                    print("Normalizzazione temporali")
             return messaggi
+
+        # livello attivo giallo+
+        ident = str((active or {}).get("identifier") or "").upper()
+        colore = {"GIALLO": "gialla", "GIALLA": "gialla", "ARANCIONE": "arancione",
+                  "ROSSO": "rossa", "ROSSA": "rossa"}.get(ident) or {1: "gialla", 2: "arancione", 3: "rossa"}.get(liv, "gialla")
+        key = f"temporale-cfp-L{liv}-{oggi}"
+        if was_sent(key, ttl_hours=24):
+            return messaggi
+
+        titolo = (ph.get("title") or {}).get("it") if ph else "Temporali forti"
+        titolo = titolo or "Temporali forti"
+        titolo_de = (ph_de_map.get("RISK_TEMPORALE", ph or {}).get("title") or {}).get("de") if ph else "Starke Gewitter"
+        titolo_de = titolo_de or "Starke Gewitter"
+        sott = ((active or {}).get("title") or {}).get("it") or ""
+        sott_de = ((active or {}).get("title") or {}).get("de") or sott
+        n_com = len((active or {}).get("municipalities") or [])
+        emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⛈️")
+        col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
+
+        messaggi.append({
+            "it": (
+                f"⛈️ {emoji} <b>Temporali – allerta {colore}</b>{nl}"
+                f"<b>{titolo}</b>{nl}"
+                + (sott + nl if sott else "")
+                + (f"Comuni interessati: {n_com}{nl}" if n_com else "")
+                + f"📅 {data_fmt}{nl}🔗 {link}"
+            ),
+            "de": (
+                f"⛈️ {emoji} <b>Gewitter – Warnung {col_de}</b>{nl}"
+                f"<b>{titolo_de}</b>{nl}"
+                + (sott_de + nl if sott_de else "")
+                + (f"Betroffene Gemeinden: {n_com}{nl}" if n_com else "")
+                + f"📅 {data_fmt}{nl}🔗 {link_de}"
+            ),
+            "_keys": [key],
+        })
+        print(f"Temporale CFP L{liv} {ident} comuni={n_com}")
     except Exception as e:
-        print("Temporali CFP:", e)
-    try:
-        url = f"https://allertameteo.app/api/alert/{','.join(COMUNI)}"
-        dati = requests.get(url, timeout=15).json()
-        if not dati.get("success"):
-            return []
-        data = dati.get("data", {})
-        if isinstance(data, dict) and "comune" in data:
-            data = {data["comune"]: data}
-        for nome, info in data.items():
-            if not info:
-                continue
-            oggi = info.get("oggi", {})
-            allerta = oggi.get("allerta") or {}
-            dettagli = oggi.get("dettagli") or {}
-            testo_l = " ".join([
-                str(allerta.get("descrizione") or ""),
-                str(dettagli.get("temporali") or ""),
-                str(dettagli.get("idrogeologico") or ""),
-            ]).lower()
-            colore = (allerta.get("colore") or "verde").lower()
-            if "temporal" not in testo_l and "temporali" not in testo_l:
-                continue
-            if colore not in LIVELLI_ALLERTA and "forti" not in testo_l and "intense" not in testo_l:
-                continue
-            comune = info.get("comune", nome)
-            key = f"temporale-{comune}-{colore}-{ora_roma().date().isoformat()}"
-            if already_sent(key, ttl_hours=12):
-                continue
-            desc = allerta.get("descrizione") or dettagli.get("temporali") or ""
-            col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot", "verde": "Grün"}.get(colore, colore)
-            if not desc:
-                desc_it = "Temporali previsti"
-                desc_de = "Gewitter erwartet"
-            else:
-                desc_it = desc
-                desc_de = desc
-            nl = chr(10)
-            messaggi.append({
-                "it": (
-                    f"⛈️ <b>Temporale / maltempo</b>{nl}"
-                    f"Comune: <b>{comune}</b>{nl}"
-                    f"Livello: {colore.capitalize()}{nl}"
-                    f"{desc_it}"
-                ),
-                "de": (
-                    f"⛈️ <b>Gewitter / Unwetter</b>{nl}"
-                    f"Gemeinde: <b>{comune}</b>{nl}"
-                    f"Stufe: {col_de}{nl}"
-                    f"{desc_de}"
-                ),
-            })
-    except Exception as e:
-        print("Errore temporali:", e)
+        print("Errore temporali CFP:", e)
     return messaggi
 
 
+# ========== METEO ==========
 # ========== METEO ==========
 def formatta_stazioni(station_data, lang="it"):
     if not station_data:
@@ -1386,32 +1440,32 @@ def is_farmacia_notturna(f):
     """Turno serale/notturno per il report della sera.
 
     Include:
-    - fascia serale (inizio >= 18:00, es. 19:00–23:59)
-    - dopo mezzanotte (00:00–08:29)
-    - copertura notturna ampia (00:00–23:59 / quasi 24h)
-    - orari che arrivano almeno fino a 23:00 (turno diurno lungo ancora aperto di sera)
+    - inizio >= 18:00
+    - fascia dopo mezzanotte (00:00–08:29 o fino a mezzogiorno)
+    - copertura fino a >= 22:00 (ancora aperta di sera)
+    - note con 'notte' / 24h
     """
     orari = _parse_orario_turno(f)
     if orari:
         start, end = orari
         if start >= 18 * 60:
             return True
-        if start <= 30:  # 00:00–00:30
+        # 00:00 – 08:29 / mattina (turno notturno classico)
+        if start <= 30 and end <= 12 * 60:
             return True
-        if start <= 6 * 60 and end <= 12 * 60:
+        if start <= 30:
             return True
-        # Quasi tutto il giorno incluso sera/notte (es. 00:00–23:59, 08:30–23:59)
-        if end >= 23 * 60:
+        # Aperta almeno fino alle 22:00
+        if end >= 22 * 60:
             return True
-        # 24h classico
         if start == 0 and end >= 23 * 60 + 50:
             return True
-    t = " ".join([
+    txt = " ".join([
         str(f.get("TURN_TIMETABLE") or ""),
         str(f.get("TURN_NOTES_I") or ""),
         str(f.get("TURN_NOTES_D") or ""),
     ]).lower()
-    if any(k in t for k in ("notte", "nacht", "notturno", "notturna", "24h", "h24")):
+    if any(k in txt for k in ("notte", "nacht", "notturno", "notturna", "24h", "h24")):
         return True
     return False
 
@@ -1628,24 +1682,23 @@ def controlla_allarmi_pc():
 
 
 def _in_finestra_sera():
-    """18:00–23:30 ora di Roma (finestra larga per ritardi Actions)."""
+    """17:00–23:50 ora di Roma (larga per ritardi Actions e cambio ora)."""
     h = ora_roma().hour
     m = ora_roma().minute
-    if h < 18:
+    if h < 17:
+        return False
+    if h == 23 and m > 50:
         return False
     if h > 23:
-        return False
-    if h == 23 and m > 30:
         return False
     return True
 
 
 def invia_report_serali(force=False):
-    """Meteo di domani + farmacie di notte. Flag solo dopo invio riuscito.
+    """Meteo di domani + farmacie di notte. Flag solo DOPO invio riuscito.
 
-    force=True: ignora SOLO la fascia oraria (non il flag giornaliero).
-    Così gli slot dedicati UTC possono mandare anche se Actions è in ritardo,
-    senza reinviare ogni ora.
+    force=True: ignora la fascia oraria (slot cron dedicati UTC).
+    Non reinvia se il flag giornaliero è già impostato.
     """
     if not force and not _in_finestra_sera():
         print(f"Fuori fascia sera ({ora_str()}) – skip report serali")
@@ -1653,6 +1706,8 @@ def invia_report_serali(force=False):
 
     h, m = ora_roma().hour, ora_roma().minute
     print(f"Report serali ({h:02d}:{m:02d} Roma, force={force})...")
+    print(f"  flags: meteo_sera={has_daily_flag('meteo_sera')} farm_sera={has_daily_flag('farm_sera')}")
+    print(f"  TOKEN={bool(TOKEN)} dest={len(prendi_destinatari())}")
 
     # --- Meteo SERA (solo domani) ---
     if has_daily_flag("meteo_sera"):
@@ -1660,6 +1715,25 @@ def invia_report_serali(force=False):
     else:
         print("Invio meteo sera (solo domani)...")
         bol = prendi_bollettino_meteo("sera")
+        if not bol:
+            # ritenta senza blocco data stretto: a sera il bollettino di oggi ha già "tomorrow"
+            print("  retry meteo sera senza check data rigoroso...")
+            try:
+                dati_it = requests.get(
+                    "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=it", timeout=15
+                ).json()
+                dati_de = requests.get(
+                    "https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=de", timeout=15
+                ).json()
+                tom = dati_it.get("tomorrow") or {}
+                if tom.get("weather") or tom.get("title") or tom.get("conditions"):
+                    bol = {
+                        "it": _bollettino_meteo_lang(dati_it, "sera", "it"),
+                        "de": _bollettino_meteo_lang(dati_de, "sera", "de"),
+                    }
+                    print("  meteo sera recuperato via retry")
+            except Exception as e:
+                print("  retry meteo fallito:", e)
         if bol:
             if invia_messaggio(bol):
                 set_daily_flag("meteo_sera")
@@ -1669,15 +1743,17 @@ def invia_report_serali(force=False):
         else:
             print("Meteo sera: bollettino non disponibile – ritento")
 
-    # --- Farmacie SERA (notte) ---
+    # --- Farmacie SERA (notte + aperte fino a tardi) ---
     if has_daily_flag("farm_sera"):
         print("Farmacie serali già inviate oggi")
     else:
         print("Invio farmacie notturne...")
         farm = prendi_farmacie_turno("notte")
+        print(f"  classificate notte: {len(farm)}")
         if not farm:
-            print("Nessuna classificato notturno – fallback a tutte le IS_TURN (comuni principali)")
+            print("  fallback a tutte le IS_TURN (comuni principali)")
             farm = prendi_farmacie_turno("tutte")
+            print(f"  totale in turno: {len(farm)}")
         msg = report_farmacie("sera")
         testo_it = msg.get("it", "") if isinstance(msg, dict) else (msg or "")
         testo_de = msg.get("de", "") if isinstance(msg, dict) else ""
@@ -1688,6 +1764,7 @@ def invia_report_serali(force=False):
         )
         if vuoto:
             print("Lista farmacie vuota – NON imposto flag, ritento")
+            print("  it[:200]=", testo_it[:200])
         else:
             ok = invia_messaggio(msg)
             if ok:
