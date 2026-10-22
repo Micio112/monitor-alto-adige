@@ -587,7 +587,7 @@
           <li data-i18n="cpr_step7"></li>
         </ul>
         <div class="cpr-btn-wrap">
-          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite" onclick="if(window.cprToggle)cprToggle()">
+          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite" onclick="window.cprToggle && window.cprToggle()">
             <span class="cpr-btn-label" id="cpr-beat">Start</span>
             <span class="cpr-btn-count" id="cpr-count">0 / 30</span>
             <span class="cpr-btn-hint" id="cpr-hint"></span>
@@ -701,6 +701,135 @@
     <button type="button" class="install-no" onclick="rifiutaInstall()">No</button>
     <button type="button" class="install-yes" id="btn-install-pwa">Installa</button>
   </div>
+
+  <script>
+    // ========== CPR AUTONOMO (funziona anche se il resto dello script ha errori) ==========
+    (function() {
+      let cprRunning = false;
+      let cprCount = 0;
+      let cprMode = "compress";
+      let cprTimer = null;
+      let cprAudioCtx = null;
+
+      function beep(kind) {
+        try {
+          if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const ctx = cprAudioCtx;
+          if (ctx.state === "suspended") ctx.resume();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "square";
+          o.connect(g); g.connect(ctx.destination);
+          o.frequency.value = kind === "vent" ? 480 : 980;
+          const now = ctx.currentTime;
+          const dur = kind === "vent" ? 0.4 : 0.09;
+          g.gain.setValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(0.9, now + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+          o.start(now); o.stop(now + dur + 0.02);
+        } catch (e) {}
+      }
+
+      function updateUI(label, count, hint) {
+        const b = document.getElementById("cpr-beat");
+        const c = document.getElementById("cpr-count");
+        const h = document.getElementById("cpr-hint");
+        if (b) b.textContent = label;
+        if (c) c.textContent = count || "";
+        if (h) h.textContent = hint || "";
+      }
+
+      function tick() {
+        if (!cprRunning) return;
+        const btn = document.getElementById("cpr-main");
+        if (cprMode === "compress") {
+          cprCount++;
+          beep("compress");
+          if (btn) {
+            btn.classList.remove("idle", "phase-vent", "pulse-vent");
+            btn.classList.add("phase-compress", "pulse-compress");
+          }
+          updateUI("COMPRESSIONE", cprCount + " / 30", "Stop · " + (30 - cprCount));
+          if (cprCount >= 30) {
+            cprMode = "vent1";
+            cprTimer = setTimeout(tick, 1000);
+          } else {
+            cprTimer = setTimeout(tick, 545);
+          }
+        } else if (cprMode === "vent1") {
+          beep("vent");
+          if (btn) {
+            btn.classList.remove("phase-compress", "pulse-compress");
+            btn.classList.add("phase-vent", "pulse-vent");
+          }
+          updateUI("VENTILAZIONE", "1 / 2", "Stop");
+          cprMode = "vent2";
+          cprTimer = setTimeout(tick, 2000);
+        } else {
+          beep("vent");
+          if (btn) btn.classList.add("pulse-vent");
+          updateUI("VENTILAZIONE", "2 / 2", "Stop");
+          cprMode = "compress";
+          cprCount = 0;
+          cprTimer = setTimeout(tick, 2000);
+        }
+      }
+
+      function start() {
+        stop(true);
+        cprRunning = true;
+        cprCount = 0;
+        cprMode = "compress";
+        const btn = document.getElementById("cpr-main");
+        if (btn) {
+          btn.classList.remove("idle");
+          btn.classList.add("running", "phase-compress");
+        }
+        try {
+          if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          if (cprAudioCtx.state === "suspended") cprAudioCtx.resume();
+        } catch (e) {}
+        tick();
+      }
+
+      function stop(silent) {
+        if (cprTimer) clearTimeout(cprTimer);
+        cprTimer = null;
+        cprRunning = false;
+        cprCount = 0;
+        cprMode = "compress";
+        const btn = document.getElementById("cpr-main");
+        if (btn) {
+          btn.classList.remove("running", "phase-compress", "phase-vent", "pulse-compress", "pulse-vent");
+          btn.classList.add("idle");
+        }
+        if (!silent) updateUI("Start", "", "");
+      }
+
+      window.cprToggle = function() {
+        if (cprRunning) stop();
+        else start();
+      };
+
+      // Collegamento multiplo
+      function bind() {
+        const btn = document.getElementById("cpr-main");
+        if (btn && !btn._cprBound) {
+          btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            window.cprToggle();
+          });
+          btn._cprBound = true;
+        }
+      }
+      bind();
+      document.addEventListener("DOMContentLoaded", bind);
+      setTimeout(bind, 100);
+      setTimeout(bind, 500);
+      setTimeout(bind, 1500);
+    })();
+  </script>
 
   <script>
 
