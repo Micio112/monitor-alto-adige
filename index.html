@@ -2164,22 +2164,33 @@
       return false;
     }
 
+    // Inizializzazione tasto CPR (robusta)
+    function initCPRButton() {
+      const cprM = document.getElementById("cpr-main");
+      if (cprM && !cprM._bound) {
+        cprM.addEventListener("click", function(e) {
+          e.preventDefault();
+          cprToggle();
+        });
+        cprM._bound = true;
+        console.log("Tasto CPR collegato");
+      }
+    }
+
+    // Esegui subito se il DOM è già pronto, altrimenti su DOMContentLoaded
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initCPRButton);
+    } else {
+      initCPRButton();
+    }
+    // Backup
+    setTimeout(initCPRButton, 300);
+    setTimeout(initCPRButton, 1000);
+
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
       });
-
-      // Inizializzazione sicura tasto RCP
-      function initCPRButton() {
-        const cprM = document.getElementById("cpr-main");
-        if (cprM && !cprM._bound) {
-          cprM.addEventListener("click", cprToggle);
-          cprM._bound = true;
-        }
-      }
-      initCPRButton();
-      setTimeout(initCPRButton, 500);
-      setTimeout(initCPRButton, 1500);
 
       const aedBtn = document.getElementById("btn-aed-need");
       if (aedBtn) aedBtn.addEventListener("click", openAedApp);
@@ -2193,7 +2204,6 @@
       caricaAllerte();
       caricaAllarmiPC();
       caricaAED();
-    });
-  </script>
+    });  </script>
 </body>
 </html>
