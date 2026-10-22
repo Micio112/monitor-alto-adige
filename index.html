@@ -570,11 +570,6 @@
     <section class="card" id="aed">
       <h2 data-i18n="h_aed">❤️ Defibrillatori pubblici (AED)</h2>
       <p class="aggiornamento" data-i18n="agg_aed">Elenco per comune</p>
-      <div class="filter-row" style="margin: 8px 0 12px;">
-        <select id="filter-aed" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e0; font-size: 0.9rem; width: 100%; max-width: 280px;">
-          <option value="all" data-i18n="filter_all">Tutti i comuni</option>
-        </select>
-      </div>
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
       <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener"><span data-i18n="link_aed">Mappa interattiva →</span></a>
     </section>
@@ -616,11 +611,6 @@
     <section class="card" id="parcheggi">
       <h2 data-i18n="h_park">🅿️ Parcheggi</h2>
       <p class="aggiornamento">Caricamento…</p>
-      <div class="filter-row" style="margin: 8px 0 12px;">
-        <select id="filter-park" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e0; font-size: 0.9rem; width: 100%; max-width: 280px;">
-          <option value="all" data-i18n="filter_all">Tutti i comuni</option>
-        </select>
-      </div>
       <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
     <section class="card" id="numeri-utili">
@@ -1542,73 +1532,50 @@
           by[p.mun].push(p);
         });
         const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, loc()));
-        // Popola filtro comuni
-        const sel = document.getElementById("filter-park");
-        if (sel) {
-          const current = sel.value;
-          sel.innerHTML = `<option value="all">${t("filter_all") || "Tutti i comuni"}</option>`;
-          nomi.forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = m;
-            sel.appendChild(opt);
-          });
-          if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
-          sel.onchange = () => renderParcheggi(by, sel.value, ultimoTs);
+        if (!nomi.length) {
+          cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
+          agg.textContent = t("park_no_upd");
+          return;
         }
-        renderParcheggi(by, sel ? sel.value : "all", ultimoTs);
-      } catch (e) {
-        cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
-        agg.textContent = "Errore";
-      }
-    }
-
-    function renderParcheggi(by, filtro, ultimoTs) {
-      const cont = document.querySelector(".lista-parcheggi");
-      const agg = document.querySelector("#parcheggi .aggiornamento");
-      const nomi = Object.keys(by).sort((a, b) => a.localeCompare(b, loc()));
-      const daMostrare = filtro === "all" ? nomi : nomi.filter(n => n === filtro);
-      if (!daMostrare.length) {
-        cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
-        return;
-      }
-      const layoutIt = { underground: t("layout_underground"), covered: t("layout_covered"), openSpace: t("layout_open"), multilevel: t("layout_multi") };
-      let html = "";
-      daMostrare.forEach(mun => {
-        html += `<div class="park-comune"><h3>${mun}</h3>`;
-        by[mun].sort((a, b) => {
-          const aFull = a.free <= 0 ? 1 : 0;
-          const bFull = b.free <= 0 ? 1 : 0;
-          if (aFull !== bFull) return aFull - bFull;
-          return (a.name || "").localeCompare(b.name || "", loc());
-        }).forEach(p => {
-          const pieno = p.free <= 0;
-          const posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
-          let meta = [];
-          if (p.addr) meta.push("📍 " + p.addr);
-          if (p.phone) meta.push("☎ " + p.phone);
-          let tags = [];
-          if (p.layout && layoutIt[p.layout]) tags.push(layoutIt[p.layout]);
-          else if (p.layout) tags.push(p.layout);
-          if (p.charging) tags.push(t("park_ev"));
-          if (p.surveillance) tags.push(t("park_surv"));
-          let maps = "";
-          if (p.coord && p.coord.y != null && p.coord.x != null) {
-            maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">${t("park_map")}</a>`;
-          }
-          html += `<div class="park-item">
-            <div class="park-item-top"><span class="park-nome">${p.name}${maps}</span>${posti}</div>
-            ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
-            ${tags.length ? `<div class="park-tags">${tags.map(tg => `<span class="park-tag">${tg}</span>`).join("")}</div>` : ""}
-          </div>`;
+        const layoutIt = { underground: t("layout_underground"), covered: t("layout_covered"), openSpace: t("layout_open"), multilevel: t("layout_multi") };
+        let html = "";
+        nomi.forEach(mun => {
+          html += `<div class="park-comune"><h3>${mun}</h3>`;
+          by[mun].sort((a, b) => {
+            const aFull = a.free <= 0 ? 1 : 0;
+            const bFull = b.free <= 0 ? 1 : 0;
+            if (aFull !== bFull) return aFull - bFull;
+            return (a.name || "").localeCompare(b.name || "", loc());
+          }).forEach(p => {
+            const pieno = p.free <= 0;
+            const posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
+            let meta = [];
+            if (p.addr) meta.push("📍 " + p.addr);
+            if (p.phone) meta.push("☎ " + p.phone);
+            let tags = [];
+            if (p.layout && layoutIt[p.layout]) tags.push(layoutIt[p.layout]);
+            else if (p.layout) tags.push(p.layout);
+            if (p.charging) tags.push(t("park_ev"));
+            if (p.surveillance) tags.push(t("park_surv"));
+            let maps = "";
+            if (p.coord && p.coord.y != null && p.coord.x != null) {
+              maps = ` <a href="https://www.google.com/maps?q=${p.coord.y},${p.coord.x}" target="_blank" rel="noopener">${t("park_map")}</a>`;
+            }
+            html += `<div class="park-item">
+              <div class="park-item-top"><span class="park-nome">${p.name}${maps}</span>${posti}</div>
+              ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
+              ${tags.length ? `<div class="park-tags">${tags.map(tg => `<span class="park-tag">${tg}</span>`).join("")}</div>` : ""}
+            </div>`;
+          });
+          html += `</div>`;
         });
-        html += `</div>`;
-      });
-      cont.innerHTML = html;
-      if (agg) {
+        cont.innerHTML = html;
         agg.textContent = ultimoTs
           ? t("updated") + ": " + new Date(ultimoTs).toLocaleString(loc())
           : t("updated") + ": " + new Date().toLocaleString(loc());
+      } catch (e) {
+        cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
+        agg.textContent = "Errore";
       }
     }
 
@@ -1932,59 +1899,35 @@
           if (ia >= 0 && ib < 0) return -1; if (ib >= 0 && ia < 0) return 1;
           if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, loc());
         });
-        // Popola filtro
-        const sel = document.getElementById("filter-aed");
-        if (sel) {
-          const current = sel.value;
-          sel.innerHTML = `<option value="all">${t("filter_all") || "Tutti i comuni"}</option>`;
-          nomi.forEach(m => {
-            const opt = document.createElement("option");
-            opt.value = m;
-            opt.textContent = m;
-            sel.appendChild(opt);
+        let html = "";
+        let totale = 0;
+        nomi.forEach(comune => {
+          const lista = perComune[comune];
+          totale += lista.length;
+          html += `<div class="aed-comune"><h3>♥ ${comune} (${lista.length})</h3>`;
+          lista.forEach(it => {
+            let riga = it.via || t("aed_no_addr");
+            if (it.desc) riga += " – " + it.desc;
+            const maps = (it.lat != null && it.lon != null)
+              ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">${t("park_map")}</a>`
+              : "";
+            html += `<div class="aed-item">${riga}${maps}</div>`;
           });
-          if (current && [...sel.options].some(o => o.value === current)) sel.value = current;
-          sel.onchange = () => renderAED(perComune, sel.value, source);
+          html += `</div>`;
+        });
+        cont.innerHTML = html || "<p style='padding:12px'>" + t("aed_none") + "</p>";
+        if (agg) {
+          agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
         }
-        renderAED(perComune, sel ? sel.value : "all", source);
+        const mapLang = lang === "de" ? "de" : "it";
+        document.querySelectorAll('a[href*="openaedmap.org"]').forEach(a => {
+          a.href = "https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35";
+        });
       } catch (e) {
         console.error("AED error", e);
         const mapLang = lang === "de" ? "de" : "it";
         cont.innerHTML = "<p style='padding:12px'>" + t("aed_err") +
           " <a href='https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35' target='_blank'>" + t("link_aed") + "</a></p>";
-      }
-    }
-
-    function renderAED(perComune, filtro, source) {
-      const cont = document.querySelector(".lista-aed");
-      const agg = document.querySelector("#aed .aggiornamento");
-      const priorita = lang === "de" ? COMUNI_AED_DE : COMUNI_AED;
-      const nomi = Object.keys(perComune).sort((a, b) => {
-        const ia = priorita.findIndex(c => a.toLowerCase().includes(c.toLowerCase()));
-        const ib = priorita.findIndex(c => b.toLowerCase().includes(c.toLowerCase()));
-        if (ia >= 0 && ib < 0) return -1; if (ib >= 0 && ia < 0) return 1;
-        if (ia >= 0 && ib >= 0) return ia - ib; return a.localeCompare(b, loc());
-      });
-      const daMostrare = filtro === "all" ? nomi : nomi.filter(n => n === filtro);
-      let html = "";
-      let totale = 0;
-      daMostrare.forEach(comune => {
-        const lista = perComune[comune];
-        totale += lista.length;
-        html += `<div class="aed-comune"><h3>♥ ${comune} (${lista.length})</h3>`;
-        lista.forEach(it => {
-          let riga = it.via || t("aed_no_addr");
-          if (it.desc) riga += " – " + it.desc;
-          const maps = (it.lat != null && it.lon != null)
-            ? ` <a href="https://www.google.com/maps?q=${it.lat},${it.lon}" target="_blank" rel="noopener">${t("park_map")}</a>`
-            : "";
-          html += `<div class="aed-item">${riga}${maps}</div>`;
-        });
-        html += `</div>`;
-      });
-      cont.innerHTML = html || "<p style='padding:12px'>" + t("aed_none") + "</p>";
-      if (agg) {
-        agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
       }
     }
 
