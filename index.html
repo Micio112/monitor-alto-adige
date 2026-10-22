@@ -592,7 +592,7 @@
           <li data-i18n="cpr_step7"></li>
         </ul>
         <div class="cpr-btn-wrap">
-          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite">
+          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite" onclick="if(window.cprToggle)cprToggle()">
             <span class="cpr-btn-label" id="cpr-beat">Start</span>
             <span class="cpr-btn-count" id="cpr-count">0 / 30</span>
             <span class="cpr-btn-hint" id="cpr-hint"></span>
@@ -2102,6 +2102,7 @@
       if (cprRunning) cprStop();
       else cprStart();
     }
+    window.cprToggle = cprToggle;
 
 
     function aedMapUrl() {
@@ -2164,7 +2165,17 @@
       return false;
     }
 
-    // Inizializzazione tasto CPR (robusta)
+    // Collegamento tasto CPR con event delegation (più affidabile)
+    document.addEventListener("click", function(e) {
+      const btn = e.target.closest("#cpr-main");
+      if (btn) {
+        e.preventDefault();
+        e.stopPropagation();
+        cprToggle();
+      }
+    });
+
+    // Inizializzazione tasto CPR (robusta) - backup
     function initCPRButton() {
       const cprM = document.getElementById("cpr-main");
       if (cprM && !cprM._bound) {
@@ -2173,19 +2184,16 @@
           cprToggle();
         });
         cprM._bound = true;
-        console.log("Tasto CPR collegato");
       }
     }
 
-    // Esegui subito se il DOM è già pronto, altrimenti su DOMContentLoaded
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", initCPRButton);
     } else {
       initCPRButton();
     }
-    // Backup
-    setTimeout(initCPRButton, 300);
-    setTimeout(initCPRButton, 1000);
+    setTimeout(initCPRButton, 200);
+    setTimeout(initCPRButton, 800);
 
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
