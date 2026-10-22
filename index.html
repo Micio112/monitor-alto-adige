@@ -121,6 +121,9 @@
       user-select: none;
       transform: scale(1);
       will-change: transform;
+      position: relative;
+      z-index: 10;
+      pointer-events: auto;
     }
     /* Fase compressioni = rosso */
     .cpr-main-btn.phase-compress {
@@ -593,6 +596,8 @@
             <span class="cpr-btn-hint" id="cpr-hint"></span>
           </button>
         </div>
+        <div id="cpr-debug" style="margin-top:10px; padding:8px; background:#fefcbf; border-radius:8px; font-size:0.8rem; color:#744210;">In attesa di click...</div>
+        <button type="button" id="test-btn" style="margin-top:8px; padding:10px 20px; background:#e53e3e; color:white; border:none; border-radius:8px; font-weight:bold;">CLICCA QUI PER TEST</button>
       </div>
     </section>
 
@@ -785,6 +790,8 @@
           btn.classList.remove("idle");
           btn.classList.add("running", "phase-compress");
         }
+        const dbg = document.getElementById("cpr-debug");
+        if (dbg) dbg.textContent = "CPR AVVIATO";
         try {
           if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
           if (cprAudioCtx.state === "suspended") cprAudioCtx.resume();
@@ -807,11 +814,31 @@
       }
 
       window.cprToggle = function() {
-        if (cprRunning) stop();
-        else start();
+        if (cprRunning) {
+          stop();
+        } else {
+          start();
+        }
       };
 
-      // Collegamento multiplo
+      // Debug + chiamata diretta
+      document.addEventListener("click", function(e) {
+        const dbg = document.getElementById("cpr-debug");
+        const isCPR = e.target.id === "cpr-main" || e.target.id === "cpr-beat" || e.target.id === "cpr-count" || e.target.id === "cpr-hint" || (e.target.closest && e.target.closest("#cpr-main"));
+        if (dbg) {
+          dbg.textContent = "Click: " + (e.target.id || e.target.tagName) + (isCPR ? " → CPR" : "");
+          dbg.style.display = "block";
+        }
+        if (isCPR) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          if (typeof window.cprToggle === "function") {
+            window.cprToggle();
+          }
+        }
+      }, true);
+
+      // Collegamento multiplo + debug visivo
       function bind() {
         const btn = document.getElementById("cpr-main");
         if (btn && !btn._cprBound) {
@@ -821,6 +848,8 @@
             window.cprToggle();
           });
           btn._cprBound = true;
+          btn.style.outline = "3px solid yellow";
+          setTimeout(() => { btn.style.outline = ""; }, 2000);
         }
       }
       bind();
@@ -2285,5 +2314,12 @@
       caricaAllarmiPC();
       caricaAED();
     });  </script>
+  <script>
+    // Test isolato
+    document.getElementById("test-btn").onclick = function() {
+      document.getElementById("cpr-debug").textContent = "TEST FUNZIONA!";
+      document.getElementById("cpr-debug").style.background = "#c6f6d5";
+    };
+  </script>
 </body>
 </html>
