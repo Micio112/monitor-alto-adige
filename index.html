@@ -1050,23 +1050,40 @@
 
     // ----- Web Push notifications -----
     const VAPID_PUBLIC_KEY = "BBcNDZ2dFrqBKxwtlftvxZ4IA5hgI1ANBMPvXUyDGVknl90qlsr7CEGLi9K91A5cbQUpSv6NKITFtToY-l8xHUg";
+    const PUSH_SUBSCRIBE_URL = "https://monitor-bot.michelbonaccio115.workers.dev/push/subscribe";
 
     async function subscribeToPush() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
       try {
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
-        if (existing) return existing;
+        if (existing) {
+          // già iscritto, invia comunque al backend (per sicurezza)
+          await sendSubscriptionToBackend(existing);
+          return existing;
+        }
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         });
-        console.log("Iscritto alle notifiche push:", sub);
-        // Qui in futuro invieremo la subscription al backend
+        await sendSubscriptionToBackend(sub);
+        console.log("Iscritto alle notifiche push");
         return sub;
       } catch (e) {
         console.warn("Iscrizione push fallita:", e);
+      }
+    }
+
+    async function sendSubscriptionToBackend(subscription) {
+      try {
+        await fetch(PUSH_SUBSCRIBE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(subscription)
+        });
+      } catch (e) {
+        console.warn("Invio subscription al backend fallito:", e);
       }
     }
 
