@@ -519,6 +519,20 @@ def invia_pacchetto(messaggi):
             if isinstance(m, dict):
                 for k in m.get("_keys") or []:
                     mark_sent(k)
+        # Invia anche web push (usando il testo IT)
+        try:
+            testo_it = ""
+            for m in messaggi:
+                if isinstance(m, dict):
+                    testo_it = m.get("it") or m.get("de") or testo_it
+                else:
+                    testo_it = m or testo_it
+                if testo_it:
+                    break
+            if testo_it:
+                invia_web_push(testo_it)
+        except Exception as e:
+            print("Web push da pacchetto errore:", e)
     return ok_any
 
 
@@ -1796,6 +1810,9 @@ def prendi_allarmi_pc(lang="it"):
             headers={"User-Agent": "MonitorAltoAdige/1.0", "Accept": "application/json"},
         )
         raw = r.content
+        # Rimuovi BOM UTF-8 se presente
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raw = raw[3:]
         if raw[:2] == bytes([0xFF, 0xFE]):
             text = raw.decode("utf-16-le")
         elif raw[:2] == bytes([0xFE, 0xFF]):
