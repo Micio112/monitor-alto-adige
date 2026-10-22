@@ -121,9 +121,6 @@
       user-select: none;
       transform: scale(1);
       will-change: transform;
-      position: relative;
-      z-index: 10;
-      pointer-events: auto;
     }
     /* Fase compressioni = rosso */
     .cpr-main-btn.phase-compress {
@@ -590,14 +587,12 @@
           <li data-i18n="cpr_step7"></li>
         </ul>
         <div class="cpr-btn-wrap">
-          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite" onclick="window.cprToggle && window.cprToggle()">
+          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite">
             <span class="cpr-btn-label" id="cpr-beat">Start</span>
             <span class="cpr-btn-count" id="cpr-count">0 / 30</span>
             <span class="cpr-btn-hint" id="cpr-hint"></span>
           </button>
         </div>
-        <div id="cpr-debug" style="margin-top:10px; padding:8px; background:#fefcbf; border-radius:8px; font-size:0.8rem; color:#744210;">In attesa di click...</div>
-        <button type="button" id="test-btn" style="margin-top:8px; padding:10px 20px; background:#e53e3e; color:white; border:none; border-radius:8px; font-weight:bold;">CLICCA QUI PER TEST</button>
       </div>
     </section>
 
@@ -708,159 +703,6 @@
   </div>
 
   <script>
-    // ========== CPR AUTONOMO (funziona anche se il resto dello script ha errori) ==========
-    (function() {
-      let cprRunning = false;
-      let cprCount = 0;
-      let cprMode = "compress";
-      let cprTimer = null;
-      let cprAudioCtx = null;
-
-      function beep(kind) {
-        try {
-          if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          const ctx = cprAudioCtx;
-          if (ctx.state === "suspended") ctx.resume();
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.type = "square";
-          o.connect(g); g.connect(ctx.destination);
-          o.frequency.value = kind === "vent" ? 480 : 980;
-          const now = ctx.currentTime;
-          const dur = kind === "vent" ? 0.4 : 0.09;
-          g.gain.setValueAtTime(0.0001, now);
-          g.gain.exponentialRampToValueAtTime(0.9, now + 0.01);
-          g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-          o.start(now); o.stop(now + dur + 0.02);
-        } catch (e) {}
-      }
-
-      function updateUI(label, count, hint) {
-        const b = document.getElementById("cpr-beat");
-        const c = document.getElementById("cpr-count");
-        const h = document.getElementById("cpr-hint");
-        if (b) b.textContent = label;
-        if (c) c.textContent = count || "";
-        if (h) h.textContent = hint || "";
-      }
-
-      function tick() {
-        if (!cprRunning) return;
-        const btn = document.getElementById("cpr-main");
-        if (cprMode === "compress") {
-          cprCount++;
-          beep("compress");
-          if (btn) {
-            btn.classList.remove("idle", "phase-vent", "pulse-vent");
-            btn.classList.add("phase-compress", "pulse-compress");
-          }
-          updateUI("COMPRESSIONE", cprCount + " / 30", "Stop · " + (30 - cprCount));
-          if (cprCount >= 30) {
-            cprMode = "vent1";
-            cprTimer = setTimeout(tick, 1000);
-          } else {
-            cprTimer = setTimeout(tick, 545);
-          }
-        } else if (cprMode === "vent1") {
-          beep("vent");
-          if (btn) {
-            btn.classList.remove("phase-compress", "pulse-compress");
-            btn.classList.add("phase-vent", "pulse-vent");
-          }
-          updateUI("VENTILAZIONE", "1 / 2", "Stop");
-          cprMode = "vent2";
-          cprTimer = setTimeout(tick, 2000);
-        } else {
-          beep("vent");
-          if (btn) btn.classList.add("pulse-vent");
-          updateUI("VENTILAZIONE", "2 / 2", "Stop");
-          cprMode = "compress";
-          cprCount = 0;
-          cprTimer = setTimeout(tick, 2000);
-        }
-      }
-
-      function start() {
-        stop(true);
-        cprRunning = true;
-        cprCount = 0;
-        cprMode = "compress";
-        const btn = document.getElementById("cpr-main");
-        if (btn) {
-          btn.classList.remove("idle");
-          btn.classList.add("running", "phase-compress");
-        }
-        const dbg = document.getElementById("cpr-debug");
-        if (dbg) dbg.textContent = "CPR AVVIATO";
-        try {
-          if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          if (cprAudioCtx.state === "suspended") cprAudioCtx.resume();
-        } catch (e) {}
-        tick();
-      }
-
-      function stop(silent) {
-        if (cprTimer) clearTimeout(cprTimer);
-        cprTimer = null;
-        cprRunning = false;
-        cprCount = 0;
-        cprMode = "compress";
-        const btn = document.getElementById("cpr-main");
-        if (btn) {
-          btn.classList.remove("running", "phase-compress", "phase-vent", "pulse-compress", "pulse-vent");
-          btn.classList.add("idle");
-        }
-        if (!silent) updateUI("Start", "", "");
-      }
-
-      window.cprToggle = function() {
-        if (cprRunning) {
-          stop();
-        } else {
-          start();
-        }
-      };
-
-      // Debug + chiamata diretta
-      document.addEventListener("click", function(e) {
-        const dbg = document.getElementById("cpr-debug");
-        const isCPR = e.target.id === "cpr-main" || e.target.id === "cpr-beat" || e.target.id === "cpr-count" || e.target.id === "cpr-hint" || (e.target.closest && e.target.closest("#cpr-main"));
-        if (dbg) {
-          dbg.textContent = "Click: " + (e.target.id || e.target.tagName) + (isCPR ? " → CPR" : "");
-          dbg.style.display = "block";
-        }
-        if (isCPR) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          if (typeof window.cprToggle === "function") {
-            window.cprToggle();
-          }
-        }
-      }, true);
-
-      // Collegamento multiplo + debug visivo
-      function bind() {
-        const btn = document.getElementById("cpr-main");
-        if (btn && !btn._cprBound) {
-          btn.addEventListener("click", function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            window.cprToggle();
-          });
-          btn._cprBound = true;
-          btn.style.outline = "3px solid yellow";
-          setTimeout(() => { btn.style.outline = ""; }, 2000);
-        }
-      }
-      bind();
-      document.addEventListener("DOMContentLoaded", bind);
-      setTimeout(bind, 100);
-      setTimeout(bind, 500);
-      setTimeout(bind, 1500);
-    })();
-  </script>
-
-  <script>
 
     let lang = localStorage.getItem("monitor_lang") || "it";
     const I18N = {
@@ -888,7 +730,6 @@
         h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
         link_pc: "Portale ufficiale →", h_meteo: "🌤 Meteo Alto Adige", h_allerte: "🚨 Allerte Meteo",
         h_ps: "🏥 Pronto Soccorso", h_aed: "❤️ Defibrillatori pubblici (AED)", agg_aed: "Elenco per comune",
-        filter_all: "Tutti i comuni",
         link_aed: "Mappa interattiva →", aed_other: "Altro", aed_no_addr: "Indirizzo non disponibile", aed_none: "Nessun AED trovato.", aed_count: "defibrillatori", aed_source: "fonte", aed_err: "Errore caricamento AED.", aed_map_ext: "Apri mappa esterna", h_farm: "💊 Farmacie di turno",
         agg_farm: "Notte (20–8) · weekend · festivi",
         h_via: "🚗 Viabilità", link_via: "Bollettino ufficiale →", h_park: "🅿️ Parcheggi",
@@ -968,7 +809,6 @@
         h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
         link_pc: "Offizielles Portal →", h_meteo: "🌤 Wetter Südtirol", h_allerte: "🚨 Wetterwarnungen",
         h_ps: "🏥 EH (Notaufnahme)", h_aed: "❤️ Öffentliche Defibrillatoren (AED)", agg_aed: "Liste nach Gemeinde",
-        filter_all: "Alle Gemeinden",
         link_aed: "Interaktive Karte →", aed_other: "Sonstiges", aed_no_addr: "Adresse nicht verfügbar", aed_none: "Keine AED gefunden.", aed_count: "Defibrillatoren", aed_source: "Quelle", aed_err: "Fehler beim Laden der AED.", aed_map_ext: "Externe Karte öffnen", h_farm: "💊 Bereitschaftsapotheken",
         agg_farm: "Nacht (20–8) · Wochenende · Feiertage",
         h_via: "🚗 Verkehrslage", link_via: "Offizielles Bulletin →", h_park: "🅿️ Parkplätze",
@@ -1210,40 +1050,23 @@
 
     // ----- Web Push notifications -----
     const VAPID_PUBLIC_KEY = "BBcNDZ2dFrqBKxwtlftvxZ4IA5hgI1ANBMPvXUyDGVknl90qlsr7CEGLi9K91A5cbQUpSv6NKITFtToY-l8xHUg";
-    const PUSH_SUBSCRIBE_URL = "https://monitor-bot.michelbonaccio115.workers.dev/push/subscribe";
 
     async function subscribeToPush() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
       try {
         const reg = await navigator.serviceWorker.ready;
         const existing = await reg.pushManager.getSubscription();
-        if (existing) {
-          // già iscritto, invia comunque al backend (per sicurezza)
-          await sendSubscriptionToBackend(existing);
-          return existing;
-        }
+        if (existing) return existing;
 
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         });
-        await sendSubscriptionToBackend(sub);
-        console.log("Iscritto alle notifiche push");
+        console.log("Iscritto alle notifiche push:", sub);
+        // Qui in futuro invieremo la subscription al backend
         return sub;
       } catch (e) {
         console.warn("Iscrizione push fallita:", e);
-      }
-    }
-
-    async function sendSubscriptionToBackend(subscription) {
-      try {
-        await fetch(PUSH_SUBSCRIBE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(subscription)
-        });
-      } catch (e) {
-        console.warn("Invio subscription al backend fallito:", e);
       }
     }
 
@@ -1727,6 +1550,7 @@
           });
           html += `</div>`;
         });
+
         cont.innerHTML = html;
         agg.textContent = ultimoTs
           ? t("updated") + ": " + new Date(ultimoTs).toLocaleString(loc())
@@ -2077,6 +1901,7 @@
         if (agg) {
           agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
         }
+        // aggiorna link mappa esterna
         const mapLang = lang === "de" ? "de" : "it";
         document.querySelectorAll('a[href*="openaedmap.org"]').forEach(a => {
           a.href = "https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35";
@@ -2085,11 +1910,15 @@
         console.error("AED error", e);
         const mapLang = lang === "de" ? "de" : "it";
         cont.innerHTML = "<p style='padding:12px'>" + t("aed_err") +
-          " <a href='https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35' target='_blank'>" + t("link_aed") + "</a></p>";
+          " <a href='https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35' target='_blank' rel='noopener'>" +
+          t("aed_map_ext") + "</a></p>";
+        if (agg) agg.textContent = t("aed_err") + " · " + new Date().toLocaleString(loc());
       }
     }
 
-    // ----- CPR metronome: tasto rotondo unico (start/stop) + gonfia/sgonfia -----    let cprTimer = null;
+
+    // ----- CPR metronome: tasto rotondo unico (start/stop) + gonfia/sgonfia -----
+    let cprTimer = null;
     let cprCount = 0;
     let cprMode = "compress"; // compress | vent1 | vent2
     let cprRunning = false;
@@ -2203,7 +2032,6 @@
       if (cprRunning) cprStop();
       else cprStart();
     }
-    window.cprToggle = cprToggle;
 
 
     function aedMapUrl() {
@@ -2266,60 +2094,18 @@
       return false;
     }
 
-    // Collegamento tasto CPR con event delegation (più affidabile)
-    document.addEventListener("click", function(e) {
-      const btn = e.target.closest("#cpr-main");
-      if (btn) {
-        e.preventDefault();
-        e.stopPropagation();
-        cprToggle();
-      }
-    });
-
-    // Inizializzazione tasto CPR (robusta) - backup
-    function initCPRButton() {
-      const cprM = document.getElementById("cpr-main");
-      if (cprM && !cprM._bound) {
-        cprM.addEventListener("click", function(e) {
-          e.preventDefault();
-          cprToggle();
-        });
-        cprM._bound = true;
-      }
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", initCPRButton);
-    } else {
-      initCPRButton();
-    }
-    setTimeout(initCPRButton, 200);
-    setTimeout(initCPRButton, 800);
-
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
       });
-
+      const cprM = document.getElementById("cpr-main");
+      if (cprM) cprM.addEventListener("click", cprToggle);
       const aedBtn = document.getElementById("btn-aed-need");
       if (aedBtn) aedBtn.addEventListener("click", openAedApp);
-
       applyLang();
-      caricaMeteo();
-      caricaProntoSoccorso();
-      caricaFarmacie();
-      caricaParcheggi();
-      caricaViabilita();
-      caricaAllerte();
-      caricaAllarmiPC();
-      caricaAED();
-    });  </script>
-  <script>
-    // Test isolato
-    document.getElementById("test-btn").onclick = function() {
-      document.getElementById("cpr-debug").textContent = "TEST FUNZIONA!";
-      document.getElementById("cpr-debug").style.background = "#c6f6d5";
-    };
+      caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
+      caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
+    });
   </script>
 </body>
 </html>
