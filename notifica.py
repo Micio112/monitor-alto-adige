@@ -40,6 +40,7 @@ SOGLIA_VERDI = 30
 STAZIONI_NOMI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Silandro", "Dobbiaco"]
 STAZIONI_NOMI_DE = ["Bozen", "Meran", "Brixen", "Bruneck", "Schlanders", "Toblach"]
 GIORNI = {0: "Lunedì", 1: "Martedì", 2: "Mercoledì", 3: "Giovedì", 4: "Venerdì", 5: "Sabato", 6: "Domenica"}
+GIORNI_DE = {0: "Montag", 1: "Dienstag", 2: "Mittwoch", 3: "Donnerstag", 4: "Freitag", 5: "Samstag", 6: "Sonntag"}
 CERCHI = {"1": "🔴", "2": "🟠", "3": "🟡", "4": "🟢", "5": "🔵"}
 
 COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"]
@@ -96,12 +97,14 @@ def ora_str():
     return ora_roma().strftime("%d/%m/%Y %H:%M")
 
 
-def nome_giorno(iso_date):
+def nome_giorno(iso_date, lang="it"):
+    """Nome del giorno della settimana (IT/DE) da data ISO."""
     if not iso_date:
         return "—"
     try:
         dt = datetime.fromisoformat(str(iso_date).replace("Z", "+00:00")[:19])
-        return GIORNI.get(dt.weekday(), str(iso_date)[:10])
+        mappa = GIORNI_DE if lang == "de" else GIORNI
+        return mappa.get(dt.weekday(), str(iso_date)[:10])
     except Exception:
         return str(iso_date)[:10]
 
@@ -479,8 +482,20 @@ def formatta_ospedale(nome, d, lang="it"):
 
 
 def controlla_ps():
-    """Max 1 notifica/ora per lo stesso PS con lo stesso tipo di motivo."""
+    """Antispam PS migliorato:
+    - se la situazione non peggiora: max 1 notifica / ospedale / 60 min
+    - situazione identica (stessi motivi): cooldown 2 ore
+    - se la criticità aumenta (es. entrano i rossi): reinvia anche prima (min 15 min)
+    """
     messaggi = []
+    now = ora_roma().timestamp()
+    st = load_state("ps_last", {})
+    # pulizia voci > 48h
+    st = {
+        k: v for k, v in st.items()
+        if isinstance(v, dict) and now - float(v.get("ts") or 0) < 48 * 3600
+    }
+
     for nome, d in prendi_pronto_soccorso().items():
         c = d["codici"]
         motivi = []
@@ -502,10 +517,47 @@ def controlla_ps():
             tipi.append("verdi")
         if not motivi:
             continue
-        key = "ps|" + nome + "|" + "+".join(sorted(tipi))
-        if already_sent(key, ttl_hours=1):
-            print(f"PS saltato (già inviato <1h): {nome} ({', '.join(tipi)})")
-            continue
+
+        # Peso criticità: rossi >> arancioni >> gialli >> resto
+        severity = 0
+        if "totale" in tipi:
+            severity += 1
+        if "verdi" in tipi:
+            severity += 1
+        if "gialli" in tipi:
+            severity += 2
+        if "arancioni" in tipi:
+            severity += 4
+        if "rossi" in tipi:
+            severity += 8
+
+        last = st.get(nome) or {}
+        last_ts = float(last.get("ts") or 0)
+        age_h = (now - last_ts) / 3600 if last_ts else 999.0
+        last_sev = int(last.get("severity") or 0)
+        last_tipi = set(last.get("tipi") or [])
+        cur_tipi = set(tipi)
+        worsened = severity > last_sev
+
+        if last_ts:
+            if worsened:
+                if age_h < 0.25:
+                    print(f"PS saltato (peggioramento ma <15 min): {nome}")
+                    continue
+            elif age_h < 1:
+                print(f"PS saltato (<1h, no peggioramento): {nome} ({', '.join(tipi)})")
+                continue
+            elif severity == last_sev and cur_tipi == last_tipi and age_h < 2:
+                print(f"PS saltato (identico <2h): {nome} ({', '.join(tipi)})")
+                continue
+
+        st[nome] = {
+            "ts": now,
+            "severity": severity,
+            "tipi": list(tipi),
+            "totale": d["totale"],
+        }
+
         motivi_de = []
         if "totale" in tipi:
             motivi_de.append(f"Gesamt ≥ {SOGLIA_TOTALE} ({d['totale']})")
@@ -519,7 +571,13 @@ def controlla_ps():
             motivi_de.append(f"Grün ≥ {SOGLIA_VERDI} ({c['4']})")
         testo_it = formatta_ospedale(nome, d, "it") + "\n⚠️ Motivo: " + ", ".join(motivi)
         testo_de = formatta_ospedale(nome, d, "de") + "\n⚠️ Grund: " + ", ".join(motivi_de)
+        if worsened and last_ts:
+            testo_it += "\n⬆️ Situazione in peggioramento"
+            testo_de += "\n⬆️ Lage verschlechtert sich"
         messaggi.append({"it": testo_it, "de": testo_de})
+        print(f"PS notifica: {nome} sev={severity} tipi={tipi}")
+
+    save_state("ps_last", st)
     return messaggi
 
 
@@ -591,14 +649,14 @@ def prendi_allerte_nazionali():
                     out.append({
                         "it": (
                             f"🟢 <b>Fine allerta</b>{nl}"
-                            f"<b>{titolo_it}</b>{nl}"
+                            f"<b>{html_esc(str(titolo_it).upper())}</b>{nl}"
                             f"Il livello è tornato a <b>verde</b>.{nl}"
                             f"📅 {data_fmt}{nl}"
                             f"🔗 {link}"
                         ),
                         "de": (
                             f"🟢 <b>Entwarnung</b>{nl}"
-                            f"<b>{titolo_de}</b>{nl}"
+                            f"<b>{html_esc(str(titolo_de).upper())}</b>{nl}"
                             f"Die Stufe ist wieder <b>grün</b>.{nl}"
                             f"📅 {data_fmt}{nl}"
                             f"🔗 {link_de}"
@@ -640,10 +698,13 @@ def prendi_allerte_nazionali():
                 extra = ""
                 extra_de = ""
 
+            # Nome fenomeno in MAIUSCOLO + grassetto
+            nome_it = html_esc(str(titolo_it).upper())
+            nome_de = html_esc(str(titolo_de).upper())
             out.append({
                 "it": (
                     f"{emoji} <b>Allerta {colore.capitalize()}</b>{nl}"
-                    f"<b>{titolo_it}</b>{nl}"
+                    f"<b>{nome_it}</b>{nl}"
                     + (sott_it + nl if sott_it else "")
                     + extra + (nl if extra else "")
                     + f"📅 {data_fmt}{nl}"
@@ -651,7 +712,7 @@ def prendi_allerte_nazionali():
                 ),
                 "de": (
                     f"{emoji} <b>Wetterwarnung {col_de}</b>{nl}"
-                    f"<b>{titolo_de}</b>{nl}"
+                    f"<b>{nome_de}</b>{nl}"
                     + (sott_de + nl if sott_de else "")
                     + extra_de + (nl if extra_de else "")
                     + f"📅 {data_fmt}{nl}"
@@ -744,17 +805,19 @@ def controlla_temporali():
         emoji = {"gialla": "🟡", "arancione": "🟠", "rossa": "🔴"}.get(colore, "⛈️")
         col_de = {"gialla": "Gelb", "arancione": "Orange", "rossa": "Rot"}.get(colore, colore)
 
+        nome_it = html_esc(str(titolo).upper())
+        nome_de = html_esc(str(titolo_de).upper())
         messaggi.append({
             "it": (
                 f"⛈️ {emoji} <b>Temporali – allerta {colore}</b>{nl}"
-                f"<b>{titolo}</b>{nl}"
+                f"<b>{nome_it}</b>{nl}"
                 + (sott + nl if sott else "")
                 + (f"Comuni interessati: {n_com}{nl}" if n_com else "")
                 + f"📅 {data_fmt}{nl}🔗 {link}"
             ),
             "de": (
                 f"⛈️ {emoji} <b>Gewitter – Warnung {col_de}</b>{nl}"
-                f"<b>{titolo_de}</b>{nl}"
+                f"<b>{nome_de}</b>{nl}"
                 + (sott_de + nl if sott_de else "")
                 + (f"Betroffene Gemeinden: {n_com}{nl}" if n_com else "")
                 + f"📅 {data_fmt}{nl}🔗 {link_de}"
