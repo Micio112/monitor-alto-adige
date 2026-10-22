@@ -397,11 +397,17 @@ def invia_web_push(testo):
         return
 
     # Recupera le subscription dal Worker
-    list_url = SUBS_URL
-    if "/subs" in list_url:
-        list_url = list_url.replace("/subs", "/push/list")
-    elif not list_url.endswith("/push/list"):
-        list_url = list_url.rstrip("/") + "/push/list"
+    # Costruisce l'URL in modo sicuro
+    base = SUBS_URL.rstrip("/")
+    if base.endswith("/subs"):
+        list_url = base[:-5] + "/push/list"
+    elif base.endswith("/subscribers"):
+        list_url = base[:-12] + "/push/list"
+    else:
+        # fallback: aggiungi /push/list alla root del worker
+        from urllib.parse import urlparse
+        parsed = urlparse(base)
+        list_url = f"{parsed.scheme}://{parsed.netloc}/push/list"
     print("List URL:", list_url)
 
     try:
