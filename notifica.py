@@ -482,10 +482,12 @@ def formatta_ospedale(nome, d, lang="it"):
 
 
 def controlla_ps():
-    """Antispam PS migliorato:
-    - se la situazione non peggiora: max 1 notifica / ospedale / 60 min
-    - situazione identica (stessi motivi): cooldown 2 ore
-    - se la criticità aumenta (es. entrano i rossi): reinvia anche prima (min 15 min)
+    """Antispam PS raffinato:
+    - reset stato quando l'ospedale torna sotto tutte le soglie
+    - nuovo tipo di motivo (es. entrano i rossi) → cooldown breve (20 min)
+    - aumento significativo dei numeri (rossi +2, arancioni +4, totale +15) → 30 min
+    - stessa situazione: 90 min
+    - numeri quasi identici: 3 ore
     """
     messaggi = []
     now = ora_roma().timestamp()
@@ -496,13 +498,13 @@ def controlla_ps():
         if isinstance(v, dict) and now - float(v.get("ts") or 0) < 48 * 3600
     }
 
+    # Priorità motivi (dal più grave)
+    PRIORITA = ["rossi", "arancioni", "gialli", "totale", "verdi"]
+
     for nome, d in prendi_pronto_soccorso().items():
         c = d["codici"]
         motivi = []
         tipi = []
-        if d["totale"] >= SOGLIA_TOTALE:
-            motivi.append(f"totale ≥ {SOGLIA_TOTALE} ({d['totale']})")
-            tipi.append("totale")
         if c["1"] >= SOGLIA_ROSSI:
             motivi.append(f"rossi ≥ {SOGLIA_ROSSI} ({c['1']})")
             tipi.append("rossi")
@@ -512,74 +514,111 @@ def controlla_ps():
         if c["3"] >= SOGLIA_GIALLI:
             motivi.append(f"gialli ≥ {SOGLIA_GIALLI} ({c['3']})")
             tipi.append("gialli")
+        if d["totale"] >= SOGLIA_TOTALE:
+            motivi.append(f"totale ≥ {SOGLIA_TOTALE} ({d['totale']})")
+            tipi.append("totale")
         if c["4"] >= SOGLIA_VERDI:
             motivi.append(f"verdi ≥ {SOGLIA_VERDI} ({c['4']})")
             tipi.append("verdi")
+
+        # Nessuna criticità → cancella stato precedente (prossimo superamento = nuovo)
         if not motivi:
+            if nome in st:
+                del st[nome]
             continue
 
-        # Peso criticità: rossi >> arancioni >> gialli >> resto
+        # Ordina motivi per priorità
+        motivi = sorted(motivi, key=lambda m: PRIORITA.index(m.split()[0]) if m.split()[0] in PRIORITA else 99)
+        tipi = sorted(tipi, key=lambda t: PRIORITA.index(t) if t in PRIORITA else 99)
+
+        # Severity più fine: peso + eccesso rispetto alla soglia
         severity = 0
-        if "totale" in tipi:
-            severity += 1
-        if "verdi" in tipi:
-            severity += 1
-        if "gialli" in tipi:
-            severity += 2
-        if "arancioni" in tipi:
-            severity += 4
         if "rossi" in tipi:
-            severity += 8
+            severity += 8 + max(0, c["1"] - SOGLIA_ROSSI)
+        if "arancioni" in tipi:
+            severity += 4 + max(0, (c["2"] - SOGLIA_ARANCIONI) // 2)
+        if "gialli" in tipi:
+            severity += 2 + max(0, (c["3"] - SOGLIA_GIALLI) // 3)
+        if "totale" in tipi:
+            severity += 1 + max(0, (d["totale"] - SOGLIA_TOTALE) // 10)
+        if "verdi" in tipi:
+            severity += 1 + max(0, (c["4"] - SOGLIA_VERDI) // 5)
 
         last = st.get(nome) or {}
         last_ts = float(last.get("ts") or 0)
         age_h = (now - last_ts) / 3600 if last_ts else 999.0
-        last_sev = int(last.get("severity") or 0)
         last_tipi = set(last.get("tipi") or [])
         cur_tipi = set(tipi)
-        worsened = severity > last_sev
+        last_counts = last.get("counts") or {}
+
+        # Nuovi tipi di motivo rispetto all'ultima notifica
+        nuovi_tipi = cur_tipi - last_tipi
+        # Aumenti significativi dei numeri
+        delta_rossi = c["1"] - int(last_counts.get("1") or 0)
+        delta_arancioni = c["2"] - int(last_counts.get("2") or 0)
+        delta_totale = d["totale"] - int(last_counts.get("totale") or 0)
+        aumento_significativo = (
+            delta_rossi >= 2 or delta_arancioni >= 4 or delta_totale >= 15
+        )
+        numeri_quasi_identici = (
+            abs(delta_rossi) <= 1 and abs(delta_arancioni) <= 2 and abs(delta_totale) <= 5
+            and cur_tipi == last_tipi
+        )
 
         if last_ts:
-            if worsened:
-                if age_h < 0.25:
-                    print(f"PS saltato (peggioramento ma <15 min): {nome}")
+            if nuovi_tipi and age_h < 0.33:
+                print(f"PS saltato (nuovo motivo ma <20 min): {nome} {nuovi_tipi}")
+                continue
+            if aumento_significativo and age_h < 0.5:
+                print(f"PS saltato (aumento ma <30 min): {nome}")
+                continue
+            if not nuovi_tipi and not aumento_significativo:
+                if numeri_quasi_identici and age_h < 3:
+                    print(f"PS saltato (quasi identico <3h): {nome}")
                     continue
-            elif age_h < 1:
-                print(f"PS saltato (<1h, no peggioramento): {nome} ({', '.join(tipi)})")
-                continue
-            elif severity == last_sev and cur_tipi == last_tipi and age_h < 2:
-                print(f"PS saltato (identico <2h): {nome} ({', '.join(tipi)})")
-                continue
+                if age_h < 1.5:
+                    print(f"PS saltato (stessa situazione <90 min): {nome} ({', '.join(tipi)})")
+                    continue
 
+        # Aggiorna stato
         st[nome] = {
             "ts": now,
             "severity": severity,
             "tipi": list(tipi),
-            "totale": d["totale"],
+            "counts": {
+                "totale": d["totale"],
+                "1": c["1"], "2": c["2"], "3": c["3"], "4": c["4"], "5": c["5"],
+            },
         }
 
+        # Messaggio
         motivi_de = []
-        if "totale" in tipi:
-            motivi_de.append(f"Gesamt ≥ {SOGLIA_TOTALE} ({d['totale']})")
         if "rossi" in tipi:
             motivi_de.append(f"Rot ≥ {SOGLIA_ROSSI} ({c['1']})")
         if "arancioni" in tipi:
             motivi_de.append(f"Orange ≥ {SOGLIA_ARANCIONI} ({c['2']})")
         if "gialli" in tipi:
             motivi_de.append(f"Gelb ≥ {SOGLIA_GIALLI} ({c['3']})")
+        if "totale" in tipi:
+            motivi_de.append(f"Gesamt ≥ {SOGLIA_TOTALE} ({d['totale']})")
         if "verdi" in tipi:
             motivi_de.append(f"Grün ≥ {SOGLIA_VERDI} ({c['4']})")
+
         testo_it = formatta_ospedale(nome, d, "it") + "\n⚠️ Motivo: " + ", ".join(motivi)
         testo_de = formatta_ospedale(nome, d, "de") + "\n⚠️ Grund: " + ", ".join(motivi_de)
-        if worsened and last_ts:
-            testo_it += "\n⬆️ Situazione in peggioramento"
-            testo_de += "\n⬆️ Lage verschlechtert sich"
+
+        if nuovi_tipi and last_ts:
+            testo_it += "\n⬆️ Nuova criticità"
+            testo_de += "\n⬆️ Neue Kritikalität"
+        elif aumento_significativo and last_ts:
+            testo_it += "\n⬆️ Aumento significativo"
+            testo_de += "\n⬆️ Deutlicher Anstieg"
+
         messaggi.append({"it": testo_it, "de": testo_de})
-        print(f"PS notifica: {nome} sev={severity} tipi={tipi}")
+        print(f"PS notifica: {nome} tipi={tipi} sev={severity} nuovi={nuovi_tipi}")
 
     save_state("ps_last", st)
     return messaggi
-
 
 # ========== ALLERTE METEO ufficiali CFP (oggi, solo non-verdi) ==========
 def _active_warning_level(levels):
