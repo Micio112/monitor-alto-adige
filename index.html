@@ -1987,15 +1987,8 @@
         agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
       }
     }
-          " <a href='https://openaedmap.org/" + mapLang + "/#map=10/46.5/11.35' target='_blank' rel='noopener'>" +
-          t("aed_map_ext") + "</a></p>";
-        if (agg) agg.textContent = t("aed_err") + " · " + new Date().toLocaleString(loc());
-      }
-    }
 
-
-    // ----- CPR metronome: tasto rotondo unico (start/stop) + gonfia/sgonfia -----
-    let cprTimer = null;
+    // ----- CPR metronome: tasto rotondo unico (start/stop) + gonfia/sgonfia -----    let cprTimer = null;
     let cprCount = 0;
     let cprMode = "compress"; // compress | vent1 | vent2
     let cprRunning = false;
