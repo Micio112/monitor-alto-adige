@@ -2168,13 +2168,31 @@
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
       });
-      const cprM = document.getElementById("cpr-main");
-      if (cprM) cprM.addEventListener("click", cprToggle);
+
+      // Inizializzazione sicura tasto RCP
+      function initCPRButton() {
+        const cprM = document.getElementById("cpr-main");
+        if (cprM && !cprM._bound) {
+          cprM.addEventListener("click", cprToggle);
+          cprM._bound = true;
+        }
+      }
+      initCPRButton();
+      setTimeout(initCPRButton, 500);
+      setTimeout(initCPRButton, 1500);
+
       const aedBtn = document.getElementById("btn-aed-need");
       if (aedBtn) aedBtn.addEventListener("click", openAedApp);
+
       applyLang();
-      caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
-      caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
+      caricaMeteo();
+      caricaProntoSoccorso();
+      caricaFarmacie();
+      caricaParcheggi();
+      caricaViabilita();
+      caricaAllerte();
+      caricaAllarmiPC();
+      caricaAED();
     });
   </script>
 </body>
