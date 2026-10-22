@@ -1,7 +1,7 @@
 /* Service Worker – Monitor Alto Adige PWA
-   Cache degli asset principali + pronto per notifiche push future.
+   Cache + supporto notifiche push web.
 */
-const CACHE = "monitor-aa-v2";
+const CACHE = "monitor-aa-v3";
 const PRECACHE = [
   "./",
   "./index.html",
@@ -31,7 +31,6 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  // Non intercettare le chiamate API esterne
   if (!event.request.url.startsWith(self.location.origin)) return;
 
   event.respondWith(
@@ -45,25 +44,41 @@ self.addEventListener("fetch", (event) => {
           return res;
         })
         .catch(() => cached);
-
       return cached || networkFetch;
     })
   );
 });
 
-// Pronto per notifiche push (da implementare in seguito)
+// Gestione notifiche push
 self.addEventListener("push", (event) => {
-  // Placeholder – verrà usato quando abiliteremo le web push
+  let data = { title: "Monitor Alto Adige", body: "Nuova notifica", url: "/" };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (e) {}
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      data: { url: data.url || "/" },
+      requireInteraction: false,
+      tag: data.tag || "monitor-aa"
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const url = event.notification.data?.url || "/";
   event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === "/" && "focus" in client) return client.focus();
+        if (client.url.includes(self.location.origin) && "focus" in client) {
+          return client.focus();
+        }
       }
-      if (clients.openWindow) return clients.openWindow("/");
+      if (clients.openWindow) return clients.openWindow(url);
     })
   );
 });
