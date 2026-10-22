@@ -373,7 +373,82 @@ def invia_messaggio(testo, testo_de=None):
             except Exception as e:
                 print("  Eccezione invio", d["id"], e)
     print(f"Messaggi consegnati: {inviati}")
+
+    # Invio web push (non blocca se fallisce)
+    try:
+        invia_web_push(testo_it)
+    except Exception as e:
+        print("Web push errore:", e)
+
     return inviati > 0
+
+
+def invia_web_push(testo):
+    """Invia una web push a tutti gli iscritti salvati nel Worker."""
+    if not SUBS_URL or not SUBS_KEY:
+        return
+    try:
+        from pywebpush import webpush
+    except ImportError:
+        print("pywebpush non installato – skip web push")
+        return
+
+    # Recupera le subscription dal Worker
+    list_url = SUBS_URL
+    if "/subs" in list_url:
+        list_url = list_url.replace("/subs", "/push/list")
+    elif not list_url.endswith("/push/list"):
+        list_url = list_url.rstrip("/") + "/push/list"
+
+    try:
+        r = requests.get(
+            list_url,
+            headers={"Authorization": f"Bearer {SUBS_KEY}"},
+            timeout=15,
+        )
+        if not r.ok:
+            print("Impossibile recuperare push subscriptions:", r.status_code)
+            return
+        subscriptions = r.json() if isinstance(r.json(), list) else []
+    except Exception as e:
+        print("Errore recupero push subs:", e)
+        return
+
+    if not subscriptions:
+        print("Nessuna push subscription")
+        return
+
+    vapid_private = os.environ.get("VAPID_PRIVATE_KEY")
+    if not vapid_private:
+        print("VAPID_PRIVATE_KEY mancante – skip web push")
+        return
+
+    # Testo pulito per la notifica
+    plain = (
+        (testo or "")
+        .replace("<b>", "").replace("</b>", "")
+        .replace("<i>", "").replace("</i>", "")
+        .replace("&", "&").replace("<", "<").replace(">", ">")
+    )
+    lines = [ln.strip() for ln in plain.splitlines() if ln.strip()]
+    title = lines[0][:60] if lines else "Monitor Alto Adige"
+    body = "\n".join(lines[1:4])[:180] if len(lines) > 1 else title
+
+    payload = json.dumps({"title": title, "body": body, "url": SITE_URL or "/"})
+
+    ok = 0
+    for sub in subscriptions:
+        try:
+            webpush(
+                subscription_info=sub,
+                data=payload,
+                vapid_private_key=vapid_private,
+                vapid_claims={"sub": "mailto:monitor.altoadige@gmail.com"},
+            )
+            ok += 1
+        except Exception as e:
+            print("  Web push fallita:", str(e)[:120])
+    print(f"Web push inviate: {ok}/{len(subscriptions)}")
 
 
 def invia_pacchetto(messaggi):
