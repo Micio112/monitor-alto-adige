@@ -94,24 +94,105 @@
     }
     .cpr-panel .cpr-steps { margin: 0 0 12px 0; padding: 0; list-style: none; font-size: 0.9rem; }
     .cpr-panel .cpr-steps li { margin-bottom: 8px; padding-left: 0; }
-    .cpr-controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
-    .cpr-controls button {
-      flex: 1; min-width: 120px; min-height: 48px; border: 0; border-radius: 10px;
-      font-weight: 700; font-size: 0.95rem; cursor: pointer;
+    /* CPR: un solo tasto rotondo grande (start/stop + conteggio integrato) */
+    .cpr-btn-wrap {
+      display: flex; justify-content: center; align-items: center;
+      margin: 16px 0 8px; padding: 8px 0;
     }
-    .cpr-start { background: #c53030; color: #fff; }
-    .cpr-stop { background: #4a5568; color: #fff; }
-    .cpr-display {
-      text-align: center; padding: 20px 12px; border-radius: 12px;
-      background: #1a202c; color: #fff; margin-top: 8px;
+    .cpr-main-btn {
+      --cpr-size: min(72vw, 260px);
+      width: var(--cpr-size);
+      height: var(--cpr-size);
+      border-radius: 50%;
+      border: 4px solid #9ae6b4;
+      background: radial-gradient(circle at 35% 30%, #48bb78 0%, #38a169 50%, #276749 100%);
+      color: #fff;
+      box-shadow: 0 8px 28px rgba(56, 161, 105, 0.4), inset 0 -6px 16px rgba(0,0,0,0.15);
+      cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px;
+      padding: 18px;
+      box-sizing: border-box;
+      overflow: hidden;
+      text-align: center;
+      line-height: 1.1;
+      transition: background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      transform: scale(1);
+      will-change: transform;
     }
-    .cpr-display .cpr-beat {
-      font-size: 1.6rem; font-weight: 800; letter-spacing: 0.04em;
-      transition: transform 0.08s ease;
+    /* Fase compressioni = rosso */
+    .cpr-main-btn.phase-compress {
+      background: radial-gradient(circle at 35% 30%, #fc8181 0%, #e53e3e 45%, #c53030 100%);
+      border-color: #feb2b2;
+      box-shadow: 0 8px 28px rgba(197, 48, 48, 0.5), inset 0 -6px 16px rgba(0,0,0,0.2);
     }
-    .cpr-display .cpr-beat.pulse { transform: scale(1.08); color: #feb2b2; }
-    .cpr-display .cpr-count { font-size: 2.4rem; font-weight: 800; margin: 8px 0; }
-    .cpr-display .cpr-hint { font-size: 0.9rem; opacity: 0.85; }
+    /* Fase ventilazioni = azzurro */
+    .cpr-main-btn.phase-vent {
+      background: radial-gradient(circle at 35% 30%, #90cdf4 0%, #4299e1 45%, #3182ce 100%);
+      border-color: #bee3f8;
+      box-shadow: 0 8px 28px rgba(66, 153, 225, 0.45), inset 0 -6px 16px rgba(0,0,0,0.15);
+    }
+    .cpr-main-btn .cpr-btn-label {
+      font-size: clamp(0.85rem, 4.2vw, 1.15rem);
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      max-width: 88%;
+      line-height: 1.1;
+      text-align: center;
+      white-space: normal;
+      overflow: visible;
+      word-break: break-word;
+      hyphens: none;
+    }
+    .cpr-main-btn.idle .cpr-btn-label {
+      font-size: clamp(1.4rem, 6.5vw, 1.9rem);
+      white-space: nowrap;
+    }
+    .cpr-main-btn .cpr-btn-count {
+      font-size: clamp(1.5rem, 7.5vw, 2.4rem);
+      font-weight: 800;
+      line-height: 1.05;
+      max-width: 90%;
+      text-align: center;
+    }
+    .cpr-main-btn .cpr-btn-hint {
+      font-size: clamp(0.6rem, 2.6vw, 0.75rem);
+      opacity: 0.9;
+      font-weight: 600;
+      max-width: 88%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .cpr-main-btn.idle .cpr-btn-count,
+    .cpr-main-btn.idle .cpr-btn-hint {
+      display: none;
+    }
+    /* Gonfia/sgonfia compressione (veloce, ~0.35s) */
+    .cpr-main-btn.pulse-compress {
+      animation: cprInflateFast 0.38s ease-out;
+    }
+    /* Gonfia/sgonfia ventilazione (lento, ~1.8s) */
+    .cpr-main-btn.pulse-vent {
+      animation: cprInflateSlow 1.85s ease-in-out;
+    }
+    @keyframes cprInflateFast {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+    @keyframes cprInflateSlow {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(1.14); }
+      100% { transform: scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cpr-main-btn.pulse-compress,
+      .cpr-main-btn.pulse-vent { animation: none; }
+    }
 
     .lang-switch {
       display: inline-flex; flex-shrink: 0; border-radius: 10px; overflow: hidden;
@@ -505,14 +586,12 @@
           <li data-i18n="cpr_step6"></li>
           <li data-i18n="cpr_step7"></li>
         </ul>
-        <div class="cpr-controls">
-          <button type="button" class="cpr-start" id="cpr-start" data-i18n="cpr_start">Start</button>
-          <button type="button" class="cpr-stop" id="cpr-stop" data-i18n="cpr_stop">Stop</button>
-        </div>
-        <div class="cpr-display" aria-live="polite">
-          <div class="cpr-beat" id="cpr-beat">—</div>
-          <div class="cpr-count" id="cpr-count">0 / 30</div>
-          <div class="cpr-hint" id="cpr-hint"></div>
+        <div class="cpr-btn-wrap">
+          <button type="button" class="cpr-main-btn idle" id="cpr-main" aria-pressed="false" aria-live="polite">
+            <span class="cpr-btn-label" id="cpr-beat">Start</span>
+            <span class="cpr-btn-count" id="cpr-count">0 / 30</span>
+            <span class="cpr-btn-hint" id="cpr-hint"></span>
+          </button>
         </div>
       </div>
     </section>
@@ -636,7 +715,7 @@
         cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "COMPRESSIONE",
-        cpr_vent: "2 ventilazioni",
+        cpr_vent: "VENTILAZIONE",
         cpr_step1: "1. Sicurezza: verifica che non ci sia pericolo per te e per la vittima.",
         cpr_step2: "2. Controlla se risponde e se respira normalmente (max 10 secondi).",
         cpr_step3: "3. Chiama o fai chiamare il 112. Metti in vivavoce.",
@@ -708,14 +787,14 @@
       },
       de: {
         btn_aed: "I NEED<br>AN AED",
-        btn_cpr: "CPR<br>ANLEITUNG",
+        btn_cpr: "CPR<br>INSTRUCTIONS",
         h_cpr: "🫀 CPR / Reanimation – Kurzanleitung",
         cpr_disclaimer: "Nur Unterstützung. Im Notfall sofort 112 rufen. Ersetzt keine offizielle Ausbildung.",
         ps_disclaimer: "Bei kleineren Notfällen und für den Bereitschaftsarzt («Guardia Medica») können Sie sich an das Haus der Gemeinschaft Ihrer Gemeinde wenden.",
         cpr_start: "Start",
         cpr_stop: "Stop",
         cpr_compress: "KOMPRESSION",
-        cpr_vent: "2 Beatmungen",
+        cpr_vent: "BEATMUNG",
         cpr_step1: "1. Sicherheit: prüfe, dass keine Gefahr für dich und das Opfer besteht.",
         cpr_step2: "2. Prüfe Reaktion und normale Atmung (max. 10 Sekunden).",
         cpr_step3: "3. Rufe 112 oder lass anrufen. Lautsprecher einschalten.",
@@ -821,6 +900,12 @@
       if (viaLink) viaLink.href = lang === "de" ? "https://verkehr.provinz.bz.it/" : "https://traffico.provincia.bz.it/";
       // Ricalcola etichette banner criticità nella lingua scelta
       mergeBanner();
+      // Aggiorna etichetta tasto CPR solo se non è in esecuzione
+      try {
+        if (typeof cprRunning !== "undefined" && !cprRunning) {
+          cprUpdateUI(t("cpr_start"), "", "");
+        }
+      } catch (e) {}
     }
     function loc() { return lang === "de" ? "de-DE" : "it-IT"; }
     function nomeOspedale(raw) {
@@ -1791,20 +1876,21 @@
     }
 
 
-    // ----- CPR metronome: 110 compressioni/min + 2 ventilazioni da 2s -----
+    // ----- CPR metronome: tasto rotondo unico (start/stop) + gonfia/sgonfia -----
     let cprTimer = null;
     let cprCount = 0;
     let cprMode = "compress"; // compress | vent1 | vent2
+    let cprRunning = false;
     let cprAudioCtx = null;
+    function cprBtn() { return document.getElementById("cpr-main"); }
     function cprBeep(kind) {
-      // kind: "compress" | "vent" — volume alto (Web Audio non può alzare il volume di sistema)
       try {
         if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const ctx = cprAudioCtx;
         if (ctx.state === "suspended") ctx.resume();
         const o = ctx.createOscillator();
         const g = ctx.createGain();
-        o.type = kind === "vent" ? "square" : "square";
+        o.type = "square";
         o.connect(g); g.connect(ctx.destination);
         o.frequency.value = kind === "vent" ? 480 : 980;
         const now = ctx.currentTime;
@@ -1816,16 +1902,21 @@
         o.start(now); o.stop(now + dur + 0.02);
       } catch (e) {}
     }
+    function cprPulse(kind) {
+      const btn = cprBtn();
+      if (!btn) return;
+      btn.classList.remove("pulse-compress", "pulse-vent", "phase-compress", "phase-vent", "idle");
+      btn.classList.add(kind === "vent" ? "phase-vent" : "phase-compress");
+      // reflow per riavviare l'animazione
+      void btn.offsetWidth;
+      btn.classList.add(kind === "vent" ? "pulse-vent" : "pulse-compress");
+    }
     function cprUpdateUI(label, countText, hintText) {
       const beat = document.getElementById("cpr-beat");
       const countEl = document.getElementById("cpr-count");
       const hint = document.getElementById("cpr-hint");
-      if (beat) {
-        beat.textContent = label;
-        beat.classList.add("pulse");
-        setTimeout(() => beat.classList.remove("pulse"), 120);
-      }
-      if (countEl) countEl.textContent = countText;
+      if (beat) beat.textContent = label;
+      if (countEl) countEl.textContent = countText || "";
       if (hint) hint.textContent = hintText || "";
     }
     function cprScheduleNext(ms) {
@@ -1833,52 +1924,72 @@
       cprTimer = setTimeout(cprTick, ms);
     }
     function cprTick() {
+      if (!cprRunning) return;
       if (cprMode === "compress") {
         cprCount++;
         cprBeep("compress");
-        cprUpdateUI(t("cpr_compress"), cprCount + " / 30", (30 - cprCount) + " → " + t("cpr_vent"));
+        cprPulse("compress");
+        cprUpdateUI(
+          t("cpr_compress"),
+          cprCount + " / 30",
+          t("cpr_stop") + " · " + (30 - cprCount)
+        );
         if (cprCount >= 30) {
           cprMode = "vent1";
-          cprScheduleNext(1000); // 1 secondo tra compressioni e ventilazioni
+          cprScheduleNext(1000);
         } else {
           cprScheduleNext(545); // ~110/min
         }
       } else if (cprMode === "vent1") {
         cprBeep("vent");
-        cprUpdateUI(t("cpr_vent") + " 1/2", "30 / 30", t("cpr_vent"));
+        cprPulse("vent");
+        cprUpdateUI(t("cpr_vent"), "1 / 2", t("cpr_stop"));
         cprMode = "vent2";
-        cprScheduleNext(2000); // 2 secondi
+        cprScheduleNext(2000);
       } else if (cprMode === "vent2") {
         cprBeep("vent");
-        cprUpdateUI(t("cpr_vent") + " 2/2", "30 / 30", t("cpr_vent"));
+        cprPulse("vent");
+        cprUpdateUI(t("cpr_vent"), "2 / 2", t("cpr_stop"));
         cprMode = "compress";
         cprCount = 0;
-        cprScheduleNext(2000); // 2 secondi seconda ventilazione, poi riprende
+        cprScheduleNext(2000);
       }
     }
     function cprStart() {
-      cprStop();
+      cprStop(true);
+      cprRunning = true;
       cprCount = 0;
       cprMode = "compress";
-      // Sblocca audio (i browser bloccano il suono fino a un tap utente).
-      // Non è possibile impostare il volume di sistema del telefono da una pagina web.
+      const btn = cprBtn();
+      if (btn) {
+        btn.classList.remove("idle");
+        btn.classList.add("running", "phase-compress");
+        btn.setAttribute("aria-pressed", "true");
+      }
       try {
         if (!cprAudioCtx) cprAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (cprAudioCtx.state === "suspended") cprAudioCtx.resume();
-        cprBeep("compress");
       } catch (e) {}
       cprTick();
     }
-    function cprStop() {
+    function cprStop(silent) {
       if (cprTimer) { clearTimeout(cprTimer); cprTimer = null; }
+      cprRunning = false;
       cprMode = "compress";
       cprCount = 0;
-      const beat = document.getElementById("cpr-beat");
-      if (beat) { beat.textContent = "—"; beat.classList.remove("pulse"); }
-      const countEl = document.getElementById("cpr-count");
-      if (countEl) countEl.textContent = "0 / 30";
-      const hint = document.getElementById("cpr-hint");
-      if (hint) hint.textContent = "";
+      const btn = cprBtn();
+      if (btn) {
+        btn.classList.remove("running", "phase-compress", "phase-vent", "pulse-compress", "pulse-vent");
+        btn.classList.add("idle");
+        btn.setAttribute("aria-pressed", "false");
+      }
+      if (!silent) {
+        cprUpdateUI(t("cpr_start"), "", "");
+      }
+    }
+    function cprToggle() {
+      if (cprRunning) cprStop();
+      else cprStart();
     }
 
 
@@ -1946,10 +2057,8 @@
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
       });
-      const cprS = document.getElementById("cpr-start");
-      const cprT = document.getElementById("cpr-stop");
-      if (cprS) cprS.addEventListener("click", cprStart);
-      if (cprT) cprT.addEventListener("click", cprStop);
+      const cprM = document.getElementById("cpr-main");
+      if (cprM) cprM.addEventListener("click", cprToggle);
       const aedBtn = document.getElementById("btn-aed-need");
       if (aedBtn) aedBtn.addEventListener("click", openAedApp);
       applyLang();
