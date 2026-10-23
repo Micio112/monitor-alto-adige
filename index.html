@@ -1048,46 +1048,6 @@
       window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
     }
 
-    // ----- Web Push notifications -----
-    const VAPID_PUBLIC_KEY = "BBcNDZ2dFrqBKxwtlftvxZ4IA5hgI1ANBMPvXUyDGVknl90qlsr7CEGLi9K91A5cbQUpSv6NKITFtToY-l8xHUg";
-
-    async function subscribeToPush() {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        const existing = await reg.pushManager.getSubscription();
-        if (existing) return existing;
-
-        const sub = await reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-        });
-        console.log("Iscritto alle notifiche push:", sub);
-        // Qui in futuro invieremo la subscription al backend
-        return sub;
-      } catch (e) {
-        console.warn("Iscrizione push fallita:", e);
-      }
-    }
-
-    function urlBase64ToUint8Array(base64String) {
-      const padding = "=".repeat((4 - base64String.length % 4) % 4);
-      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const rawData = window.atob(base64);
-      return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
-    }
-
-    // Chiedi il permesso dopo che l'utente ha interagito un po' con la pagina
-    document.addEventListener("click", function askPushOnce() {
-      document.removeEventListener("click", askPushOnce);
-      if (Notification.permission === "default") {
-        Notification.requestPermission().then((perm) => {
-          if (perm === "granted") subscribeToPush();
-        });
-      } else if (Notification.permission === "granted") {
-        subscribeToPush();
-      }
-    }, { once: true });
     window.addEventListener("beforeinstallprompt", (e) => {
       e.preventDefault(); deferredPrompt = e;
       try { if (!localStorage.getItem("hideInstallBar") && !isStandalone) document.getElementById("install-bar").classList.add("visible"); } catch (err) {}
