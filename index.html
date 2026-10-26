@@ -1527,7 +1527,7 @@
       const conteggio = document.getElementById("viabilita-conteggio");
       const criticita = [];
       try {
-        const res = await fetch("https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json");
+        const res = await fetch("https://static-traffico.provincia.bz.it/publications/traffic/traffic.json");
         const dati = await res.json();
         if (!Array.isArray(dati) || !dati.length) { cont.innerHTML = "<p style='padding:12px'>" + t("via_none") + "</p>"; return; }
         function priorita(ev) {
