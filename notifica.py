@@ -1126,7 +1126,7 @@ def prendi_bollettino_meteo(quando="mattina"):
 def prendi_viabilita():
     try:
         dati = requests.get(
-            "https://static-verkehr.provinz.bz.it/publications/traffic/traffic.json", timeout=20
+            "https://static-traffico.provincia.bz.it/publications/traffic/traffic.json", timeout=20
         ).json()
         return dati if isinstance(dati, list) else []
     except Exception as e:
