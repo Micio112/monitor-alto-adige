@@ -2065,6 +2065,26 @@
       applyLang();
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
       caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
+
+      // Aggiornamento automatico ogni 5 minuti
+      function aggiornaTutto() {
+        caricaMeteo();
+        caricaProntoSoccorso();
+        caricaFarmacie();
+        caricaParcheggi();
+        caricaViabilita();
+        caricaAllerte();
+        caricaAllarmiPC();
+        caricaAED();
+      }
+      setInterval(aggiornaTutto, 5 * 60 * 1000);
+
+      // Aggiorna anche quando si torna sulla pagina (dopo averla lasciata in background)
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          aggiornaTutto();
+        }
+      });
     });
   </script>
 </body>
