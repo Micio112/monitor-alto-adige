@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#1e3a5f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Monitor AA">
   <meta name="description" content="Monitor Alto Adige – Pronto Soccorso, allerte, meteo, viabilità, farmacie e AED">
   <title>Monitor Alto Adige</title>
@@ -46,10 +46,16 @@
     body.dark .riga-allerta { border-color: #4a5568; }
     body.dark .allerta-dettaglio { color: #cbd5e0; }
     body.dark .nessuna-allerta { color: #68d391; }
-    body.dark .aed-comune { border-color: #4a5568; }
+    body.dark .scroll-box { background: #2d3748; border-color: #4a5568; }
+    body.dark .aed-comune { border-color: #4a5568; background: #2d3748; }
     body.dark .aed-comune h3 { color: #fc8181; }
-    body.dark .aed-item { color: #e2e8f0; border-color: #fc8181; }
+    body.dark .aed-item { 
+      color: #e2e8f0; 
+      border-color: #fc8181; 
+      background: transparent;
+    }
     body.dark .aed-item a { color: #90cdf4; }
+    body.dark .lista-aed { background: #2d3748; color: #e2e8f0; }
     body.dark .pc-alert { background: #3d2c2c; border-color: #fc8181; color: #e2e8f0; }
     body.dark .pc-alert h3 { color: #fc8181; }
     body.dark .pc-alert .pc-testo { color: #e2e8f0; }
@@ -98,6 +104,12 @@
       color: white;
       padding: calc(12px + env(safe-area-inset-top, 0px)) 12px 14px;
       text-align: center; overflow: hidden;
+    }
+    header::before {
+      content: "";
+      position: absolute; top: 0; left: 0; right: 0;
+      height: env(safe-area-inset-top, 0px);
+      background: #1a365d;
     }
     header .mountains {
       position: absolute; left: 0; right: 0; bottom: 0; height: 88px;
