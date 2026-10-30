@@ -1693,7 +1693,7 @@
 
     function filtraAED(val) {
       document.querySelectorAll(".aed-comune").forEach(el => {
-        const nome = (el.querySelector("h3")?.textContent || "").replace(/^♥?\s*/, "").replace(/\s*\(\d+\)$/, "").trim();
+        const nome = (el.querySelector("h3")?.textContent || "").replace(/^♥\s*/, "").replace(/\s*\(\d+\)$/, "").trim();
         el.style.display = (!val || nome === val) ? "" : "none";
       });
     }
@@ -2050,6 +2050,16 @@
           html += `</div>`;
         });
         cont.innerHTML = html || "<p style='padding:12px'>" + t("aed_none") + "</p>";
+        // Popola filtro comuni
+        const sel = document.getElementById("filtro-aed");
+        if (sel) {
+          sel.innerHTML = '<option value="">' + (lang === "de" ? "Alle Gemeinden" : "Tutti i comuni") + '</option>';
+          nomi.forEach(c => {
+            const opt = document.createElement("option");
+            opt.value = c; opt.textContent = c;
+            sel.appendChild(opt);
+          });
+        }
         if (agg) {
           agg.textContent = totale + " " + t("aed_count") + " · " + t("aed_source") + " " + source + " · " + new Date().toLocaleString(loc());
         }
