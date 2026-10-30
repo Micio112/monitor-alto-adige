@@ -542,7 +542,7 @@
       <a href="#parcheggi" data-i18n="nav_park">🅿️ Parcheggi</a>
       <a href="#numeri-utili" data-i18n="nav_numeri">📞 Numeri e Link utili</a>
       <a href="#chi-sono" data-i18n="nav_chi">👤 Chi sono</a>
-      <a href="#telegram-bot">🤖 Bot Telegram</a>
+      <a href="#telegram-bot" data-i18n="nav_telegram">🤖 Bot Telegram</a>
       <a href="#contatti" data-i18n="nav_contatti">✉️ Contatti</a>
     </nav>
   </header>
@@ -668,15 +668,15 @@
           <a class="btn-chiama" href="tel:800310650">📞 Call 800 310 650</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">Centralino Ospedale Bolzano</div>
+          <div class="numero-nome" data-i18n="num_ospedale">Centralino Ospedale Bolzano</div>
           <div class="numero-orario">H24</div>
           <a class="btn-chiama" href="tel:+390471908111">📞 Call 0471 908111</a>
         </div>
         <div class="numero-card">
-          <div class="numero-nome">CUP – Prenotazioni sanitarie</div>
+          <div class="numero-nome" data-i18n="num_cup">CUP – Prenotazioni sanitarie</div>
           <div class="numero-orario">Prefisso del comune + 100 100</div>
           <a class="btn-chiama" href="tel:+390471100100">📞 Call 0471 100 100 (Bolzano)</a>
-          <div style="font-size:0.8rem; color:#718096; margin-top:4px;">Altri: 0472 / 0473 / 0474 + 100 100</div>
+          <div style="font-size:0.8rem; color:#718096; margin-top:4px;" data-i18n="num_cup_note">Altri: 0472 / 0473 / 0474 + 100 100</div>
         </div>
       </div>
       <div class="app-112">
@@ -702,12 +702,12 @@
       <div class="chi-sono-testo" data-i18n-html="chi_sono_html"></div>
     </section>
     <section class="card" id="telegram-bot">
-      <h2>🤖 Bot Telegram</h2>
-      <p class="aggiornamento">Notifiche in tempo reale</p>
-      <p style="margin-bottom:12px; font-size:0.92rem;">Ricevi avvisi su Pronto Soccorso, allerte meteo, protezione civile, viabilità e farmacie di turno direttamente su Telegram.</p>
+      <h2 data-i18n="h_telegram">🤖 Bot Telegram</h2>
+      <p class="aggiornamento" data-i18n="agg_telegram">Notifiche in tempo reale</p>
+      <p style="margin-bottom:12px; font-size:0.92rem;" data-i18n="telegram_desc">Ricevi avvisi su Pronto Soccorso, allerte meteo, protezione civile, viabilità e farmacie di turno direttamente su Telegram.</p>
       <a id="btn-telegram-section" href="https://t.me/" target="_blank" rel="noopener" class="btn-chiama" style="display:inline-flex; align-items:center; gap:8px; background:#0088cc;">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.2l-1.86 8.77c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.87 5.23-4.72c.23-.2-.05-.31-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.61-.6.13-.89l10.86-4.19c.5-.19.94.12.78.89z"/></svg>
-        Apri il Bot
+        <span data-i18n="telegram_btn">Apri il Bot</span>
       </a>
     </section>
     <section class="card" id="contatti">
@@ -756,7 +756,13 @@
         nav_pc: "🆘 Allarmi PC", nav_meteo: "🌤 Meteo", nav_allerte: "🚨 Allerte Meteo",
         nav_ps: "🏥 Pronto Soccorso", nav_aed: "❤️ AED", nav_cpr: "🫀 CPR", nav_farm: "💊 Farmacie",
         nav_via: "🚗 Viabilità", nav_park: "🅿️ Parcheggi", nav_numeri: "📞 Numeri e Link utili",
-        nav_chi: "👤 Chi sono", nav_contatti: "✉️ Contatti",
+        nav_chi: "👤 Chi sono", nav_contatti: "✉️ Contatti", nav_telegram: "🤖 Bot Telegram",
+        meteo_ora: "Ora", meteo_vicino: "Vicino a te", meteo_bolzano: "Bolzano",
+        telegram_desc: "Ricevi avvisi su Pronto Soccorso, allerte meteo, protezione civile, viabilità e farmacie di turno direttamente su Telegram.",
+        telegram_btn: "Apri il Bot",
+        num_ospedale: "Centralino Ospedale Bolzano",
+        num_cup: "CUP – Prenotazioni sanitarie",
+        num_cup_note: "Altri: 0472 / 0473 / 0474 + 100 100",
         h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
         link_pc: "Portale ufficiale →", h_meteo: "🌤 Meteo Alto Adige", h_allerte: "🚨 Allerte Meteo",
         h_ps: "🏥 Pronto Soccorso", h_aed: "❤️ Defibrillatori pubblici (AED)", agg_aed: "Elenco per comune",
@@ -835,7 +841,13 @@
         nav_pc: "🆘 Zivilschutz", nav_meteo: "🌤 Wetter", nav_allerte: "🚨 Wetterwarnungen",
         nav_ps: "🏥 EH", nav_aed: "❤️ AED", nav_cpr: "🫀 CPR", nav_farm: "💊 Apotheken",
         nav_via: "🚗 Verkehr", nav_park: "🅿️ Parkplätze", nav_numeri: "📞 Nummern & Links",
-        nav_chi: "👤 Über mich", nav_contatti: "✉️ Kontakt",
+        nav_chi: "👤 Über mich", nav_contatti: "✉️ Kontakt", nav_telegram: "🤖 Telegram-Bot",
+        meteo_ora: "Jetzt", meteo_vicino: "In deiner Nähe", meteo_bolzano: "Bozen",
+        telegram_desc: "Erhalte Hinweise zu Notaufnahmen, Wetterwarnungen, Zivilschutz, Verkehr und diensthabenden Apotheken direkt auf Telegram.",
+        telegram_btn: "Bot öffnen",
+        num_ospedale: "Krankenhauszentrale Bozen",
+        num_cup: "CUP – Gesundheitsbuchungen",
+        num_cup_note: "Andere: 0472 / 0473 / 0474 + 100 100",
         h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
         link_pc: "Offizielles Portal →", h_meteo: "🌤 Wetter Südtirol", h_allerte: "🚨 Wetterwarnungen",
         h_ps: "🏥 EH (Notaufnahme)", h_aed: "❤️ Öffentliche Defibrillatoren (AED)", agg_aed: "Liste nach Gemeinde",
@@ -1263,7 +1275,7 @@
         const stations = oggi.stationData || [];
         // Trova stazione più vicina o Bolzano
         let stazione = stations[0] || {};
-        let nomeStazione = "Bolzano";
+        let nomeStazione = t("meteo_bolzano");
         const getPos = () => new Promise((resolve) => {
           if (!navigator.geolocation) return resolve(null);
           navigator.geolocation.getCurrentPosition(
@@ -1283,7 +1295,7 @@
           });
           if (best) {
             stazione = best;
-            nomeStazione = best.name || best.stationName || "Vicino a te";
+            nomeStazione = best.name || best.stationName || t("meteo_vicino");
           }
         }
         const symOggi = stazione.symbol || {};
@@ -1297,7 +1309,7 @@
         }).join("");
         cont.innerHTML = `
           <div class="meteo-attuale" style="background:#ebf8ff; border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid #bee3f8;">
-            <strong>📍 ${nomeStazione} – Ora</strong>
+            <strong>📍 ${nomeStazione} – ${t("meteo_ora")}</strong>
             <div style="font-size:1.4rem; font-weight:700; margin:4px 0;">${stazione.min != null ? stazione.min + "° / " + stazione.max + "°" : "—"}</div>
             <div>${symOggi.description || "—"}</div>
           </div>
@@ -1454,7 +1466,7 @@
       const cont = document.querySelector(".lista-parcheggi");
       const agg = document.querySelector("#parcheggi .aggiornamento");
       try {
-        const res = await fetch("https://mobility.api.opendatahub.com/v2/flat,node/ParkingStation/*/latest?limit=3000");
+        const res = await fetch("https://mobility.api.opendatahub.com/v2/flat,node/ParkingStation/*/latest?limit=5000");
         const dati = await res.json();
         const stations = {};
         let ultimoTs = null;
@@ -1481,8 +1493,11 @@
         // Comuni Alto Adige (ampio) – solo stazioni con free E capacity validi
         const munOk = (mun) => {
           if (!mun) return false;
-          // Accetta quasi tutti i comuni altoatesini (filtro ampio)
-          return !/austria|österreich|tirol|trentino|lombardia|veneto|friuli|svizzera|schweiz/i.test(mun);
+          const m = mun.toLowerCase();
+          // Escludi Trentino (province TN) e altre regioni
+          if (/\btrento\b|rovereto|riva del garda|\barco\b|tione|cavalese|predazzo|moena|canazei|pinzolo|madonna di campiglio/.test(m)) return false;
+          if (/austria|österreich|\btirol\b|lombardia|veneto|friuli|svizzera|schweiz/.test(m)) return false;
+          return true;
         };
         const list = [];
         Object.values(stations).forEach(s => {
