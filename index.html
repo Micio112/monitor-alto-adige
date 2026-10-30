@@ -194,6 +194,9 @@
       .cpr-main-btn.pulse-vent { animation: none; }
     }
 
+    .header-right {
+      display: flex; flex-direction: column; align-items: flex-end; flex-shrink: 0; z-index: 2;
+    }
     .lang-switch {
       display: inline-flex; flex-shrink: 0; border-radius: 10px; overflow: hidden;
       border: 1px solid rgba(255,255,255,0.35); background: rgba(0,0,0,0.15);
@@ -363,6 +366,12 @@
     .park-nome { font-weight: 600; color: #1a1a1a; }
     .park-free { font-weight: 700; color: #276749; white-space: nowrap; }
     .park-free.pieno { color: #c53030; }
+    .park-bar {
+      height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 6px; overflow: hidden;
+    }
+    .park-bar-fill {
+      height: 100%; border-radius: 3px; transition: width 0.3s;
+    }
     .park-meta { font-size: 0.8rem; color: #718096; margin-top: 4px; line-height: 1.4; }
     .park-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
     .park-tag {
@@ -513,9 +522,12 @@
         <img class="site-logo" src="icon-192.png" width="44" height="44" alt="Logo Monitor Alto Adige">
         <h1>Monitor Alto Adige</h1>
       </div>
-      <div class="lang-switch" role="group" aria-label="Language / Sprache">
-        <button type="button" class="lang-btn active" data-set-lang="it" aria-pressed="true">IT</button>
-        <button type="button" class="lang-btn" data-set-lang="de" aria-pressed="false">DE</button>
+      <div class="header-right">
+        <div id="orologio" style="font-size:0.75rem; opacity:0.9; text-align:right; line-height:1.2; margin-bottom:4px;">--:--<br>--</div>
+        <div class="lang-switch" role="group" aria-label="Language / Sprache">
+          <button type="button" class="lang-btn active" data-set-lang="it" aria-pressed="true">IT</button>
+          <button type="button" class="lang-btn" data-set-lang="de" aria-pressed="false">DE</button>
+        </div>
       </div>
     </div>
     <nav class="quick" aria-label="Sezioni">
@@ -530,6 +542,7 @@
       <a href="#parcheggi" data-i18n="nav_park">🅿️ Parcheggi</a>
       <a href="#numeri-utili" data-i18n="nav_numeri">📞 Numeri e Link utili</a>
       <a href="#chi-sono" data-i18n="nav_chi">👤 Chi sono</a>
+      <a href="#telegram-bot">🤖 Bot Telegram</a>
       <a href="#contatti" data-i18n="nav_contatti">✉️ Contatti</a>
     </nav>
   </header>
@@ -571,7 +584,7 @@
       <h2 data-i18n="h_aed">❤️ Defibrillatori pubblici (AED)</h2>
       <p class="aggiornamento" data-i18n="agg_aed">Elenco per comune</p>
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
-      <a class="link-ext" href="https://openaedmap.org/it/#map=10/46.5/11.35" target="_blank" rel="noopener"><span data-i18n="link_aed">Mappa interattiva →</span></a>
+      <a class="link-ext" href="#" onclick="event.preventDefault(); apriMappaConPosizione('https://openaedmap.org/it/#map={z}/{lat}/{lon}', 46.4983, 11.3548, 13);"><span data-i18n="link_aed">Mappa interattiva →</span></a>
     </section>
     <section class="card" id="cpr">
       <h2 data-i18n="h_cpr">🫀 Istruzioni RCP / CPR</h2>
@@ -654,6 +667,17 @@
           <div class="numero-orario">H24</div>
           <a class="btn-chiama" href="tel:800310650">📞 Call 800 310 650</a>
         </div>
+        <div class="numero-card">
+          <div class="numero-nome">Centralino Ospedale Bolzano</div>
+          <div class="numero-orario">H24</div>
+          <a class="btn-chiama" href="tel:+390471908111">📞 Call 0471 908111</a>
+        </div>
+        <div class="numero-card">
+          <div class="numero-nome">CUP – Prenotazioni sanitarie</div>
+          <div class="numero-orario">Prefisso del comune + 100 100</div>
+          <a class="btn-chiama" href="tel:+390471100100">📞 Call 0471 100 100 (Bolzano)</a>
+          <div style="font-size:0.8rem; color:#718096; margin-top:4px;">Altri: 0472 / 0473 / 0474 + 100 100</div>
+        </div>
       </div>
       <div class="app-112">
         <h3 data-i18n="app_112_title">App emergenza «112 Where Are U»</h3>
@@ -677,6 +701,15 @@
       <p class="aggiornamento">Michel · Micio · Bozen / Bolzano</p>
       <div class="chi-sono-testo" data-i18n-html="chi_sono_html"></div>
     </section>
+    <section class="card" id="telegram-bot">
+      <h2>🤖 Bot Telegram</h2>
+      <p class="aggiornamento">Notifiche in tempo reale</p>
+      <p style="margin-bottom:12px; font-size:0.92rem;">Ricevi avvisi su Pronto Soccorso, allerte meteo, protezione civile, viabilità e farmacie di turno direttamente su Telegram.</p>
+      <a id="btn-telegram-section" href="https://t.me/" target="_blank" rel="noopener" class="btn-chiama" style="display:inline-flex; align-items:center; gap:8px; background:#0088cc;">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.2l-1.86 8.77c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.87 5.23-4.72c.23-.2-.05-.31-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.61-.6.13-.89l10.86-4.19c.5-.19.94.12.78.89z"/></svg>
+        Apri il Bot
+      </a>
+    </section>
     <section class="card" id="contatti">
       <h2 data-i18n="h_contatti">✉️ Contatti</h2>
       <p class="aggiornamento" data-i18n="agg_contatti">Segnalazioni bug · impressum · suggerimenti</p>
@@ -691,9 +724,6 @@
 
   <a id="btn-instagram" href="https://www.instagram.com/monitor.altoadige_sudtirol/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram @monitor.altoadige_sudtirol">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.5 6a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/></svg>
-  </a>
-  <a id="btn-telegram" href="https://t.me/" target="_blank" rel="noopener" aria-label="Telegram">
-    <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.56 8.2l-1.86 8.77c-.14.62-.5.77-1.02.48l-2.82-2.08-1.36 1.31c-.15.15-.28.28-.57.28l.2-2.87 5.23-4.72c.23-.2-.05-.31-.35-.12l-6.46 4.07-2.78-.87c-.6-.19-.61-.6.13-.89l10.86-4.19c.5-.19.94.12.78.89z"/></svg>
   </a>
   <button type="button" id="btn-top" aria-label="Torna su" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
   <div id="install-bar">
@@ -1016,7 +1046,10 @@
     }
 
     const TELEGRAM_BOT = "Micioalertbot";
-    if (TELEGRAM_BOT) document.getElementById("btn-telegram").href = "https://t.me/" + TELEGRAM_BOT;
+    if (TELEGRAM_BOT) {
+      const tg = document.getElementById("btn-telegram-section");
+      if (tg) tg.href = "https://t.me/" + TELEGRAM_BOT;
+    }
 
     const COMUNI = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro"];
     const COMUNI_FARM = ["Bolzano", "Merano", "Bressanone", "Brunico", "Vipiteno", "Silandro", "Laives"];
@@ -1227,7 +1260,33 @@
         const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=" + (lang === "de" ? "de" : "it"));
         const dati = await res.json();
         const oggi = dati.today || {}, domani = dati.tomorrow || {};
-        const bz = (oggi.stationData || [])[0] || {}, symOggi = bz.symbol || {};
+        const stations = oggi.stationData || [];
+        // Trova stazione più vicina o Bolzano
+        let stazione = stations[0] || {};
+        let nomeStazione = "Bolzano";
+        const getPos = () => new Promise((resolve) => {
+          if (!navigator.geolocation) return resolve(null);
+          navigator.geolocation.getCurrentPosition(
+            (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+            () => resolve(null),
+            { timeout: 4000, maximumAge: 120000 }
+          );
+        });
+        const userPos = await getPos();
+        if (userPos && stations.length) {
+          let best = null, bestDist = Infinity;
+          stations.forEach(s => {
+            const lat = s.latitude || s.lat, lon = s.longitude || s.lon;
+            if (lat == null || lon == null) return;
+            const d = Math.hypot(lat - userPos.lat, lon - userPos.lon);
+            if (d < bestDist) { bestDist = d; best = s; }
+          });
+          if (best) {
+            stazione = best;
+            nomeStazione = best.name || best.stationName || "Vicino a te";
+          }
+        }
+        const symOggi = stazione.symbol || {};
         const bzD = (domani.stationData || [])[0] || {}, symD = bzD.symbol || {};
         const forecasts = dati.dayForecasts || [];
         let settimana = forecasts.map(g => {
@@ -1237,14 +1296,19 @@
           return `<div class="giorno-mini"><strong>${formatDataIT(g.date)}</strong>${sym.imageUrl ? `<img src="${sym.imageUrl}" alt="">` : ""}${sym.description || "—"}<br>Max ${tmax}<br>Min ${tmin}</div>`;
         }).join("");
         cont.innerHTML = `
+          <div class="meteo-attuale" style="background:#ebf8ff; border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid #bee3f8;">
+            <strong>📍 ${nomeStazione} – Ora</strong>
+            <div style="font-size:1.4rem; font-weight:700; margin:4px 0;">${stazione.min != null ? stazione.min + "° / " + stazione.max + "°" : "—"}</div>
+            <div>${symOggi.description || "—"}</div>
+          </div>
           <div class="meteo-box">
             <div class="meteo-giorno">
               <h3>${t("oggi")} – ${oggi.title || "—"}</h3>
               <div class="meteo-top">
                 ${symOggi.imageUrl ? `<img class="meteo-icona" src="${symOggi.imageUrl}" alt="">` : ""}
                 <div>
-                  <div class="meteo-temp">${bz.min != null ? bz.min + "° / " + bz.max + "°" : (oggi.temperatures || "")}</div>
-                  <div class="meteo-testo"><b>BZ:</b> ${symOggi.description || "—"}</div>
+                  <div class="meteo-temp">${stazione.min != null ? stazione.min + "° / " + stazione.max + "°" : (oggi.temperatures || "")}</div>
+                  <div class="meteo-testo"><b>${nomeStazione}:</b> ${symOggi.description || "—"}</div>
                 </div>
               </div>
               <div class="meteo-testo">${oggi.weather || ""}</div>
@@ -1265,7 +1329,7 @@
           <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">${t("prognosi")}</h3>
           <div class="settimana">${settimana || "—"}</div>
           <h3 style="margin-top:12px;font-size:0.95rem;color:#2c5282">${t("radar")}</h3>
-          <div class="radar-wrap"><iframe src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe></div>
+          <div class="radar-wrap"><iframe id="radar-iframe" src="https://www.rainviewer.com/map.html?loc=46.5,11.35,8&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1" loading="lazy" title="Radar"></iframe></div>
           <a class="link-ext" href="https://www.rainviewer.com/map.html?loc=46.6,11.3,8" target="_blank" rel="noopener">${t("radar_full")}</a>
           <a class="link-ext" href="${lang === "de" ? "https://wetter.provinz.bz.it/de" : "https://meteo.provincia.bz.it"}" target="_blank" rel="noopener" style="margin-left:12px">${t("meteo_uff")}</a>`;
         agg.textContent = t("updated") + ": " + new Date().toLocaleString(loc());
@@ -1417,7 +1481,8 @@
         // Comuni Alto Adige (ampio) – solo stazioni con free E capacity validi
         const munOk = (mun) => {
           if (!mun) return false;
-          return /(bolzano|bozen|merano|meran|brunico|bruneck|bressanone|brixen|vipiteno|sterzing|silandro|schlanders|laives|leifers|appiano|eppan|lana|terlano|terlan|caldaro|kaltern|egna|neumarkt|ora|auer|renon|ritten|sarentino|sarntal|ortisei|st\.?\s*ulrich|selva|wolkenstein|castelrotto|kastelruth|dobbiaco|toblach|san\s*candido|innichen|sesto|sexten|campo\s*tures|sand\s*in\s*taufers|chiusa|klausen|naturno|naturns|laces|latsch|malles|mals|curon|graun|prato|prad|scena|schenna|tirolo|tirol|parcines|partschins|lagundo|algund|marlengo|marling|cermes|tscherms|postal|gargazon|nalles|nals|andriano|andrian|tesimo|tisens|meltina|mölten|verano|vöran|fiè|völs|nova\s*levante|welschnofen|nova\s*ponente|deutschnofen|aldino|aldein|trodena|truden|bronzolo|branzoll|vadena|pfatten|cortaccia|kurtatsch|termno|tramin|magrè|margreid|cortina|kurtinig|salorno|salurn|proves|proveis|senale|unsere\s*liebe|ulten|ultimo|st\.?\s*pankraz|castelbello|kastelbell|martello|martell|lasa|laas|stelvio|stilfs|tubre|taufers|racines|ratschings|val\s*di\s*vizze|pfitsch|brennero|brenner|forteza|franzensfeste|rio\s*di\s*pusteria|mühlbach|vandoies|vintl|terento|terenten|falzes|pfalzen|chienes|kiens|san\s*lorenzo|st\.?\s*lorenzen|marebbe|enneberg|badia|abtei|corvara|la\s*valle|wengen|san\s*martino|st\.?\s*martin|funes|villnöss|luson|lüsen|rodengo|rodeneck|varna|vahrn|naz|natz|sciaves|schabs)/i.test(mun);
+          // Accetta quasi tutti i comuni altoatesini (filtro ampio)
+          return !/austria|österreich|tirol|trentino|lombardia|veneto|friuli|svizzera|schweiz/i.test(mun);
         };
         const list = [];
         Object.values(stations).forEach(s => {
@@ -1489,7 +1554,10 @@
             return (a.name || "").localeCompare(b.name || "", loc());
           }).forEach(p => {
             const pieno = p.free <= 0;
+            const perc = Math.round((p.free / p.cap) * 100);
             const posti = `<span class="park-free${pieno ? " pieno" : ""}">${p.free} ${t("park_free")} / ${p.cap}</span>`;
+            const barColor = perc > 30 ? "#38a169" : perc > 10 ? "#d69e2e" : "#e53e3e";
+            const bar = `<div class="park-bar"><div class="park-bar-fill" style="width:${perc}%;background:${barColor}"></div></div>`;
             let meta = [];
             if (p.addr) meta.push("📍 " + p.addr);
             if (p.phone) meta.push("☎ " + p.phone);
@@ -1504,6 +1572,7 @@
             }
             html += `<div class="park-item">
               <div class="park-item-top"><span class="park-nome">${p.name}${maps}</span>${posti}</div>
+              ${bar}
               ${meta.length ? `<div class="park-meta">${meta.join(" · ")}</div>` : ""}
               ${tags.length ? `<div class="park-tags">${tags.map(tg => `<span class="park-tag">${tg}</span>`).join("")}</div>` : ""}
             </div>`;
@@ -2054,6 +2123,26 @@
       return false;
     }
 
+    // Geolocalizzazione per mappe (fallback Bolzano)
+    function apriMappaConPosizione(urlBase, fallbackLat, fallbackLon, zoom) {
+      if (!navigator.geolocation) {
+        window.open(urlBase.replace("{lat}", fallbackLat).replace("{lon}", fallbackLon).replace("{z}", zoom), "_blank");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const url = urlBase.replace("{lat}", pos.coords.latitude).replace("{lon}", pos.coords.longitude).replace("{z}", zoom);
+          window.open(url, "_blank");
+        },
+        () => {
+          const url = urlBase.replace("{lat}", fallbackLat).replace("{lon}", fallbackLon).replace("{z}", zoom);
+          window.open(url, "_blank");
+        },
+        { timeout: 5000, maximumAge: 60000 }
+      );
+    }
+    window.apriMappaConPosizione = apriMappaConPosizione;
+
     document.addEventListener("DOMContentLoaded", () => {
       document.querySelectorAll("[data-set-lang]").forEach(btn => {
         btn.addEventListener("click", () => setLang(btn.getAttribute("data-set-lang")));
@@ -2066,25 +2155,46 @@
       caricaMeteo(); caricaProntoSoccorso(); caricaFarmacie();
       caricaParcheggi(); caricaViabilita(); caricaAllerte(); caricaAllarmiPC(); caricaAED();
 
-      // Aggiornamento automatico ogni 5 minuti
-      function aggiornaTutto() {
-        caricaMeteo();
-        caricaProntoSoccorso();
-        caricaFarmacie();
-        caricaParcheggi();
-        caricaViabilita();
-        caricaAllerte();
-        caricaAllarmiPC();
-        caricaAED();
+      // Orologio
+      function aggiornaOrologio() {
+        const el = document.getElementById("orologio");
+        if (!el) return;
+        const now = new Date();
+        const ora = now.toLocaleTimeString(lang === "de" ? "de-DE" : "it-IT", { hour: "2-digit", minute: "2-digit" });
+        const data = now.toLocaleDateString(lang === "de" ? "de-DE" : "it-IT", { weekday: "short", day: "2-digit", month: "short" });
+        el.innerHTML = ora + "<br>" + data;
       }
-      setInterval(aggiornaTutto, 5 * 60 * 1000);
+      aggiornaOrologio();
+      setInterval(aggiornaOrologio, 30000);
 
-      // Aggiorna anche quando si torna sulla pagina (dopo averla lasciata in background)
+      // Radar con geolocalizzazione
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const iframe = document.getElementById("radar-iframe");
+          if (iframe) {
+            iframe.src = `https://www.rainviewer.com/map.html?loc=${pos.coords.latitude},${pos.coords.longitude},10&oFa=0&oC=0&oU=0&oCS=1&oF=0&oAP=0&c=1&o=83&lm=1&sm=1&sn=1`;
+          }
+        }, () => {}, { timeout: 4000, maximumAge: 120000 });
+      }
+
+      // Aggiornamento automatico ogni 3 minuti
+      function aggiornaTutto() {
+        try { caricaMeteo(); } catch (e) {}
+        try { caricaProntoSoccorso(); } catch (e) {}
+        try { caricaFarmacie(); } catch (e) {}
+        try { caricaParcheggi(); } catch (e) {}
+        try { caricaViabilita(); } catch (e) {}
+        try { caricaAllerte(); } catch (e) {}
+        try { caricaAllarmiPC(); } catch (e) {}
+        try { caricaAED(); } catch (e) {}
+      }
+      setInterval(aggiornaTutto, 3 * 60 * 1000);
+
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          aggiornaTutto();
-        }
+        if (document.visibilityState === "visible") aggiornaTutto();
       });
+      window.addEventListener("focus", aggiornaTutto);
+      window.addEventListener("pageshow", aggiornaTutto);
     });
   </script>
 </body>
