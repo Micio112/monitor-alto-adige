@@ -16,6 +16,54 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body.dark {
+      background: #1a202c; color: #e2e8f0;
+    }
+    body.dark .card { background: #2d3748; color: #e2e8f0; }
+    body.dark .card h2 { color: #90cdf4; }
+    body.dark .chi-sono-testo,
+    body.dark .chi-sono-testo p,
+    body.dark .contatti-box {
+      background: #2d3748; border-color: #4a5568; color: #e2e8f0;
+    }
+    body.dark .contatti-box p,
+    body.dark .contatti-box a { color: #e2e8f0; }
+    body.dark .chi-sono-testo { color: #e2e8f0; }
+    body.dark .chi-sono-testo p { color: #e2e8f0; }
+    body.dark .meteo-attuale { background: #2c5282 !important; color: #e2e8f0; border-color: #4a5568 !important; }
+    body.dark .cpr-panel { background: #2d3748; border-color: #fc8181; color: #e2e8f0; }
+    body.dark .cpr-panel .cpr-disclaimer { color: #feb2b2; }
+    body.dark .cpr-panel .cpr-steps li { color: #e2e8f0; }
+    body.dark .evento { background: #2d3748; }
+    body.dark .evento.chiusura { background: #3d2c2c; }
+    body.dark .evento.incidente { background: #3d2c2c; }
+    body.dark .evento.coda { background: #2c3d4d; }
+    body.dark .evento.baustelle { background: #3d3a2c; }
+    body.dark .evento-titolo { color: #e2e8f0; }
+    body.dark .evento-meta { color: #a0aec0; }
+    body.dark .evento-testo { color: #cbd5e0; }
+    body.dark .viabilita-info { color: #a0aec0; }
+    body.dark .scroll-box { background: #2d3748; border-color: #4a5568; }
+    body.dark .app-112 h3 { color: #90cdf4; }
+    body.dark .app-112-links a { color: #90cdf4; background: #4a5568; }
+    body.dark .contatti-box a { color: #90cdf4; }
+    body.dark .link-ext { color: #90cdf4; }
+    body.dark .giorno-mini { background: #4a5568; color: #e2e8f0; }
+    body.dark .giorno-mini strong { color: #90cdf4; }
+    body.dark .aggiornamento { color: #a0aec0; }
+    body.dark header { background: linear-gradient(160deg, #1a202c 0%, #2d3748 100%); }
+    .theme-toggle {
+      background: transparent; border: 1px solid rgba(255,255,255,0.3);
+      color: white; border-radius: 8px; padding: 4px 8px; font-size: 0.75rem;
+      cursor: pointer; margin-bottom: 4px;
+    }
+    .skeleton {
+      background: linear-gradient(90deg, #edf2f7 25%, #e2e8f0 50%, #edf2f7 75%);
+      background-size: 200% 100%; animation: shimmer 1.5s infinite;
+      border-radius: 8px; height: 20px; margin: 8px 0;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    body.dark .skeleton { background: linear-gradient(90deg, #4a5568 25%, #2d3748 50%, #4a5568 75%); background-size: 200% 100%; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: #f0f2f5; color: #1a1a1a; line-height: 1.5;
@@ -23,6 +71,12 @@
       padding-left: env(safe-area-inset-left, 0px);
       padding-right: env(safe-area-inset-right, 0px);
       overflow-x: hidden; min-height: 100dvh;
+    }
+    body.large-text { font-size: 18px; }
+    .a11y-btn {
+      background: transparent; border: 1px solid rgba(255,255,255,0.3);
+      color: white; border-radius: 8px; padding: 4px 6px; font-size: 0.7rem;
+      cursor: pointer;
     }
     header {
       position: relative;
@@ -222,11 +276,11 @@
     }
     nav.quick a {
       font-size: 0.72rem; padding: 7px 11px; border-radius: 999px;
-      background: rgba(255,255,255,0.16); color: white; text-decoration: none;
-      border: 1px solid rgba(255,255,255,0.22); white-space: nowrap;
-      line-height: 1.2;
+      background: rgba(0,0,0,0.25); color: white; text-decoration: none;
+      border: 1px solid rgba(255,255,255,0.35); white-space: nowrap;
+      line-height: 1.2; font-weight: 500;
     }
-    nav.quick a:active { background: rgba(255,255,255,0.28); }
+    nav.quick a:active { background: rgba(0,0,0,0.4); }
     #banner-criticita {
       display: none; background: #c53030; color: white;
       padding: 10px 14px; font-size: 0.88rem; text-align: center; font-weight: 600;
@@ -515,6 +569,8 @@
       </div>
       <div class="header-right">
         <div id="orologio" style="font-size:0.75rem; opacity:0.9; text-align:right; line-height:1.2; margin-bottom:4px;">--:--<br>--</div>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Tema">🌙</button>
+        <button type="button" class="a11y-btn" id="a11y-btn" aria-label="Testo grande">A+</button>
         <div class="lang-switch" role="group" aria-label="Language / Sprache">
           <button type="button" class="lang-btn active" data-set-lang="it" aria-pressed="true">IT</button>
           <button type="button" class="lang-btn" data-set-lang="de" aria-pressed="false">DE</button>
@@ -556,7 +612,7 @@
       <a class="link-ext" href="https://allerta-protezione-civile.provincia.bz.it/it/home" target="_blank" rel="noopener"><span data-i18n="link_pc">Portale ufficiale →</span></a>
     </section>
     <section class="card" id="meteo">
-      <h2 data-i18n="h_meteo">🌤 Meteo Alto Adige</h2>
+      <h2 data-i18n="h_meteo">🌤 Meteo Alto Adige <button type="button" onclick="condividiSezione('meteo')" style="float:right;background:none;border:0;font-size:0.9rem;cursor:pointer;" aria-label="Condividi">🔗</button></h2>
       <p class="aggiornamento">Caricamento…</p>
       <div class="lista-meteo"><p>Attendere…</p></div>
     </section>
@@ -574,6 +630,9 @@
     <section class="card" id="aed">
       <h2 data-i18n="h_aed">❤️ Defibrillatori pubblici (AED)</h2>
       <p class="aggiornamento" data-i18n="agg_aed">Elenco per comune</p>
+      <select id="filtro-aed" style="width:100%;padding:8px;margin-bottom:8px;border-radius:8px;border:1px solid #e2e8f0;" onchange="filtraAED(this.value)">
+        <option value="">Tutti i comuni</option>
+      </select>
       <div class="scroll-box"><div class="lista-aed"><p style="padding:12px">Caricamento…</p></div></div>
       <a class="link-ext" href="#" onclick="event.preventDefault(); apriMappaConPosizione('https://openaedmap.org/it/#map={z}/{lat}/{lon}', 46.4983, 11.3548, 13);"><span data-i18n="link_aed">Mappa interattiva →</span></a>
     </section>
@@ -615,6 +674,9 @@
     <section class="card" id="parcheggi">
       <h2 data-i18n="h_park">🅿️ Parcheggi</h2>
       <p class="aggiornamento">Caricamento…</p>
+      <select id="filtro-park" style="width:100%;padding:8px;margin-bottom:8px;border-radius:8px;border:1px solid #e2e8f0;" onchange="filtraParcheggi(this.value)">
+        <option value="">Tutti i comuni</option>
+      </select>
       <div class="scroll-box"><div class="lista-parcheggi"><p style="padding:12px">Caricamento…</p></div></div>
     </section>
     <section class="card" id="numeri-utili">
@@ -757,7 +819,7 @@
         num_ospedale: "Centralino Ospedale Bolzano",
         num_cup: "CUP – Prenotazioni sanitarie",
         num_cup_orario: "Prefisso del comune + 100 100",
-        num_cup_btn: "Call 0471 100 100 (Bolzano)",
+        num_cup_btn: "📞 Call 0471 100 100 (Bolzano)",
         num_cup_note: "Altri: 0472 / 0473 / 0474 + 100 100",
         num_taxi: "Taxi Bolzano",
         h_pc: "🆘 Allarmi di Protezione Civile", agg_pc: "Comunicati operativi provincia",
@@ -846,7 +908,7 @@
         num_ospedale: "Krankenhauszentrale Bozen",
         num_cup: "CUP – Gesundheitsbuchungen",
         num_cup_orario: "Vorwahl der Gemeinde + 100 100",
-        num_cup_btn: "Call 0471 100 100 (Bozen)",
+        num_cup_btn: "📞 Call 0471 100 100 (Bozen)",
         num_cup_note: "Andere: 0472 / 0473 / 0474 + 100 100",
         num_taxi: "Taxi Bozen",
         h_pc: "🆘 Zivilschutzwarnungen", agg_pc: "Operative Mitteilungen der Provinz",
@@ -1270,7 +1332,7 @@
       const cont = document.querySelector(".lista-meteo");
       const agg = document.querySelector("#meteo .aggiornamento");
       try {
-        const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=" + (lang === "de" ? "de" : "it"));
+        const res = await fetch("https://api-weather.services.siag.it/api/v2/bulletinHD?format=json&lang=" + (lang === "de" ? "de" : "it") + "&_=" + Date.now());
         const dati = await res.json();
         const oggi = dati.today || {}, domani = dati.tomorrow || {};
         const stations = oggi.stationData || [];
@@ -1306,7 +1368,10 @@
           const sym = g.symbol || {};
           const tmax = g.tempMax ? g.tempMax.min + "–" + g.tempMax.max + "°" : "—";
           const tmin = g.tempMin ? g.tempMin.min + "–" + g.tempMin.max + "°" : "—";
-          return `<div class="giorno-mini"><strong>${formatDataIT(g.date)}</strong>${sym.imageUrl ? `<img src="${sym.imageUrl}" alt="">` : ""}${sym.description || "—"}<br>Max ${tmax}<br>Min ${tmin}</div>`;
+          const giorno = lang === "de" 
+            ? new Date(g.date).toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "short" })
+            : formatDataIT(g.date);
+          return `<div class="giorno-mini"><strong>${giorno}</strong>${sym.imageUrl ? `<img src="${sym.imageUrl}" alt="">` : ""}${sym.description || "—"}<br>Max ${tmax}<br>Min ${tmin}</div>`;
         }).join("");
         cont.innerHTML = `
           <div class="meteo-attuale" style="background:#ebf8ff; border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid #bee3f8;">
@@ -1332,7 +1397,7 @@
                 ${symD.imageUrl ? `<img class="meteo-icona" src="${symD.imageUrl}" alt="">` : ""}
                 <div>
                   <div class="meteo-temp">${bzD.min != null ? bzD.min + "° / " + bzD.max + "°" : (domani.temperatures || "—")}</div>
-                  <div class="meteo-testo"><b>BZ:</b> ${symD.description || "—"}</div>
+                  <div class="meteo-testo"><b>${nomeStazione}:</b> ${symD.description || "—"}</div>
                 </div>
               </div>
               <div class="meteo-testo">${domani.weather || ""}</div>
@@ -1600,10 +1665,52 @@
         agg.textContent = ultimoTs
           ? t("updated") + ": " + new Date(ultimoTs).toLocaleString(loc())
           : t("updated") + ": " + new Date().toLocaleString(loc());
+        // Popola filtro
+        const sel = document.getElementById("filtro-park");
+        if (sel && sel.options.length <= 1) {
+          document.querySelectorAll(".park-comune h3").forEach(h => {
+            const nome = h.textContent.replace(/^♥?\s*/, "").replace(/\s*\(\d+\)$/, "").trim();
+            if (nome && ![...sel.options].some(o => o.value === nome)) {
+              const opt = document.createElement("option");
+              opt.value = nome; opt.textContent = nome;
+              sel.appendChild(opt);
+            }
+          });
+        }
       } catch (e) {
         cont.innerHTML = "<p style='padding:12px'>" + t("park_none") + "</p>";
         agg.textContent = "Errore";
       }
+    }
+
+    function filtraParcheggi(val) {
+      document.querySelectorAll(".park-comune").forEach(el => {
+        const nome = (el.querySelector("h3")?.textContent || "").replace(/^♥?\s*/, "").replace(/\s*\(\d+\)$/, "").trim();
+        el.style.display = (!val || nome === val) ? "" : "none";
+      });
+    }
+    window.filtraParcheggi = filtraParcheggi;
+
+    function filtraAED(val) {
+      document.querySelectorAll(".aed-comune").forEach(el => {
+        const nome = (el.querySelector("h3")?.textContent || "").replace(/^♥?\s*/, "").replace(/\s*\(\d+\)$/, "").trim();
+        el.style.display = (!val || nome === val) ? "" : "none";
+      });
+    }
+    window.filtraAED = filtraAED;
+
+    // Cache offline semplice
+    function salvaCache(key, data) {
+      try { localStorage.setItem("cache_" + key, JSON.stringify({ t: Date.now(), d: data })); } catch (e) {}
+    }
+    function leggiCache(key, maxAge) {
+      try {
+        const raw = localStorage.getItem("cache_" + key);
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (maxAge && Date.now() - obj.t > maxAge) return null;
+        return obj.d;
+      } catch (e) { return null; }
     }
 
     async function caricaViabilita() {
@@ -2182,6 +2289,43 @@
       }
       aggiornaOrologio();
       setInterval(aggiornaOrologio, 30000);
+
+      // Tema scuro
+      const themeBtn = document.getElementById("theme-toggle");
+      function applicaTema(scuro) {
+        document.body.classList.toggle("dark", scuro);
+        if (themeBtn) themeBtn.textContent = scuro ? "☀️" : "🌙";
+        try { localStorage.setItem("tema", scuro ? "dark" : "light"); } catch (e) {}
+      }
+      try { if (localStorage.getItem("tema") === "dark") applicaTema(true); } catch (e) {}
+      if (themeBtn) themeBtn.addEventListener("click", () => applicaTema(!document.body.classList.contains("dark")));
+
+      // Testo grande
+      const a11yBtn = document.getElementById("a11y-btn");
+      if (a11yBtn) {
+        a11yBtn.addEventListener("click", () => {
+          document.body.classList.toggle("large-text");
+          try { localStorage.setItem("largeText", document.body.classList.contains("large-text") ? "1" : "0"); } catch (e) {}
+        });
+        try { if (localStorage.getItem("largeText") === "1") document.body.classList.add("large-text"); } catch (e) {}
+      }
+
+      // Preferiti
+      window.togglePreferito = function(id) {
+        try {
+          let fav = JSON.parse(localStorage.getItem("preferiti") || "[]");
+          if (fav.includes(id)) fav = fav.filter(x => x !== id);
+          else fav.push(id);
+          localStorage.setItem("preferiti", JSON.stringify(fav));
+        } catch (e) {}
+      };
+
+      // Condividi
+      window.condividiSezione = function(id) {
+        const url = location.origin + location.pathname + "#" + id;
+        if (navigator.share) navigator.share({ title: document.title, url }).catch(() => {});
+        else navigator.clipboard.writeText(url).then(() => alert("Link copiato"));
+      };
 
       // Radar con geolocalizzazione
       if (navigator.geolocation) {
