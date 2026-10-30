@@ -1,7 +1,7 @@
 /* Service Worker – Monitor Alto Adige PWA
    Cache + supporto notifiche push web.
 */
-const CACHE = "monitor-aa-v3";
+const CACHE = "monitor-aa-v4";
 const PRECACHE = [
   "./",
   "./index.html",
