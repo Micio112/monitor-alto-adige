@@ -467,15 +467,6 @@
       text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
     }
     #btn-telegram svg { width: 28px; height: 28px; fill: white; }
-    #btn-instagram {
-      position: fixed; right: max(16px, env(safe-area-inset-right, 0px));
-      bottom: calc(140px + env(safe-area-inset-bottom, 0px)); z-index: 50;
-      width: 52px; height: 52px; border-radius: 50%;
-      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
-      display: flex; align-items: center; justify-content: center;
-      text-decoration: none; box-shadow: 0 4px 14px rgba(0,0,0,0.22);
-    }
-    #btn-instagram svg { width: 26px; height: 26px; fill: white; }
     #install-bar {
       display: none; position: fixed; left: 12px; right: 12px; z-index: 60;
       bottom: calc(12px + env(safe-area-inset-bottom, 0px));
@@ -722,9 +713,6 @@
     <p class="credit">Curated by Micio</p>
   </footer>
 
-  <a id="btn-instagram" href="https://www.instagram.com/monitor.altoadige_sudtirol/" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram @monitor.altoadige_sudtirol">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 0 1 12 7.5zm0 2A2.5 2.5 0 1 0 14.5 12 2.5 2.5 0 0 0 12 9.5zM17.5 6a1 1 0 1 1-1 1 1 1 0 0 1 1-1z"/></svg>
-  </a>
   <button type="button" id="btn-top" aria-label="Torna su" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
   <div id="install-bar">
     <p>Aggiungi <b>Monitor Alto Adige</b> alla Home.</p>
@@ -1312,7 +1300,7 @@
         cont.innerHTML = `
           <div class="meteo-attuale" style="background:#ebf8ff; border-radius:12px; padding:12px; margin-bottom:12px; border:1px solid #bee3f8;">
             <strong>📍 ${nomeStazione} – ${t("meteo_ora")}</strong>
-            <div style="font-size:1.4rem; font-weight:700; margin:4px 0;">${stazione.min != null ? stazione.min + "° / " + stazione.max + "°" : "—"}</div>
+            <div style="font-size:1.4rem; font-weight:700; margin:4px 0;">${stazione.temp != null ? stazione.temp + "°" : (stazione.min != null && stazione.max != null ? Math.round((stazione.min + stazione.max) / 2) + "°" : "—")}</div>
             <div>${symOggi.description || "—"}</div>
           </div>
           <div class="meteo-box">
